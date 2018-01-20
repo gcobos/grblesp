@@ -74,12 +74,9 @@ void protocol_main_loop()
   uint8_t is_rt;
   for (;;) {
 
-    delay(0);
-
     // Process one line of incoming serial data, as the data becomes available. Performs an
     // initial filtering by removing spaces and comments and capitalizing all letters.
     while((c = serial_read()) != SERIAL_NO_DATA) {
-      delay(0);
       is_rt = 0;
       // Pick off realtime command characters directly from the serial stream. These characters are
       // not passed into the main buffer, but these set system state flag bits for realtime execution.
@@ -99,7 +96,7 @@ void protocol_main_loop()
                 }
                 break;
               #ifdef DEBUG
-                case CMD_DEBUG_REPORT: {uint32_t sreg = save_SREG; cli(); bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); restore_SREG(sreg);} break;
+                case CMD_DEBUG_REPORT: {uint32_t sreg = save_SREG(); cli(); bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); restore_SREG(sreg);} break;
               #endif
               case CMD_FEED_OVR_RESET: system_set_exec_motion_override_flag(EXEC_FEED_OVR_RESET); break;
               case CMD_FEED_OVR_COARSE_PLUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_COARSE_PLUS); break;
@@ -198,6 +195,7 @@ void protocol_main_loop()
       }
     }
 
+
     // If there are no more characters in the serial read buffer to be processed and executed,
     // this indicates that g-code streaming has either filled the planner buffer or has
     // completed. In either case, auto-cycle start, if enabled, any queued moves.
@@ -250,6 +248,8 @@ void protocol_auto_cycle_start()
 // limit switches, or the main program.
 void protocol_execute_realtime()
 {
+  delay(0);
+  ESP.wdtFeed();
   protocol_exec_rt_system();
   if (sys.suspend) { protocol_exec_rt_suspend(); }
 }
@@ -273,6 +273,8 @@ void protocol_exec_rt_system()
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
       system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {
+        delay(0);
+        ESP.wdtFeed();
         // Block everything, except reset and status reports, until user issues reset or power
         // cycles. Hard limits typically occur while unattended or not paying attention. Gives
         // the user and a GUI time to do what is needed before resetting, like killing the
@@ -282,7 +284,6 @@ void protocol_exec_rt_system()
     }
     system_clear_exec_alarm(); // Clear alarm
   }
-  delay(0);
 
   rt_exec = sys_rt_exec_state; // Copy volatile sys_rt_exec_state.
   if (rt_exec) {
