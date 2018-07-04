@@ -35,9 +35,9 @@
 #define _delay_ms   delay
 
 #define save_SREG() xt_rsil(2); // this routine will allow level 3 and above (returns an uint32_t)
-#define restore_SREG(state) xt_wsr_ps(state); // restore the state (uint32_t)
+#define restore_SREG(state) xt_wsr_ps(state); sei(); // restore the state (uint32_t)
 
-static struct {
+volatile static struct {
   uint8_t LIMIT_PORT;     // All inputs
   uint8_t MISC_PORT;      // Inputs and outputs
   uint8_t STEP_PORT;      // All outputs

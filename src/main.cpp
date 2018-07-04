@@ -88,7 +88,7 @@ void setup(void){
     #ifdef HOMING_INIT_LOCK
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
     #endif
-
+    pinMode(12, OUTPUT);
 }
 
 void loop(void)
@@ -133,4 +133,6 @@ void loop(void)
 
   // Start Grbl main loop. Processes program inputs and executes them.
   protocol_main_loop();
+
+  //digitalWrite(12, (ESP.getCycleCount()>>21)%2);
 }

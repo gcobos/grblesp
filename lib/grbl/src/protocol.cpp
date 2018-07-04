@@ -73,6 +73,8 @@ void protocol_main_loop()
   uint8_t c;
   uint8_t is_rt;
   for (;;) {
+    delay(0);
+    ESP.wdtFeed();
 
     // Process one line of incoming serial data, as the data becomes available. Performs an
     // initial filtering by removing spaces and comments and capitalizing all letters.
@@ -194,7 +196,6 @@ void protocol_main_loop()
         }
       }
     }
-
 
     // If there are no more characters in the serial read buffer to be processed and executed,
     // this indicates that g-code streaming has either filled the planner buffer or has
@@ -374,7 +375,6 @@ void protocol_exec_rt_system()
 
       system_clear_exec_state_flag((EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP));
     }
-
     // Execute a cycle start by starting the stepper interrupt to begin executing the blocks in queue.
     if (rt_exec & EXEC_CYCLE_START) {
       // Block if called at same time as the hold commands: feed hold, motion cancel, and safety door.
@@ -416,6 +416,7 @@ void protocol_exec_rt_system()
     }
 
     if (rt_exec & EXEC_CYCLE_STOP) {
+
       // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
       // realtime command execution in the main program, ensuring that the planner re-plans safely.
       // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper

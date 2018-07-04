@@ -330,13 +330,15 @@ ICACHE_RAM_ATTR void TIMER1_COMPA_vect(void)
     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
   #endif
 
+	// TODO: Write regs
+
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   //TCNT0 = st.step_pulse_time; // Reload Timer0 counter
   //TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler
+	timer0_write(ESP.getCycleCount() + st.step_pulse_time + 10000);
 
-
-  busy = true;
+	busy = true;
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time.
          // NOTE: The remaining code in this ISR will finish before returning to main program.
 
@@ -522,8 +524,12 @@ ICACHE_RAM_ATTR void TIMER1_COMPA_vect(void)
 // This interrupt is enabled by ISR_TIMER1_COMPAREA when it sets the motor port bits to execute
 // a step. This ISR resets the motor port after a short period (settings.pulse_microseconds)
 // completing one step cycle.
-ISR(TIMER0_OVF_vect)
+//ISR(TIMER0_OVF_vect)
+ICACHE_RAM_ATTR void TIMER0_OVF_vect(void)
 {
+	// timer0 cannot be disbled. It needs to have some value in the future or wdt reset will happen
+	timer0_write(ESP.getCycleCount() + 80000000);
+
   // Reset stepping pins (leave the direction pins)
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK);
   //TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed.
@@ -593,6 +599,8 @@ void stepper_init()
 	timer1_attachInterrupt(TIMER1_COMPA_vect);
 	timer1_write(1);
 
+	timer0_isr_init();
+	timer0_attachInterrupt(TIMER0_OVF_vect);
   // Configure Timer 1: Stepper Driver Interrupt
   /*TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
   TCCR1B |=  (1<<WGM12);
@@ -690,7 +698,9 @@ void st_prep_buffer()
   if (bit_istrue(sys.step_control,STEP_CONTROL_END_MOTION)) { return; }
 
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-
+		//delay(0);
+		//ESP.wdtFeed();
+		//Serial.printf("%d, %d\n", segment_buffer_tail, segment_next_head);
     // Determine if we need to load a new planner block or if the block needs to be recomputed.
     if (pl_block == NULL) {
 
@@ -958,6 +968,9 @@ void st_prep_buffer()
           break; // **Complete** Exit loop. Segment execution time maxed.
         }
       }
+
+			//delay(0);
+			//ESP.wdtFeed();
     } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete.
 
     #ifdef VARIABLE_SPINDLE
