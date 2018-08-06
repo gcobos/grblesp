@@ -20,6 +20,7 @@
 */
 
 #include "grbl.hpp"
+#include <SPI.h>
 
 // Some useful constants.
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment
@@ -331,6 +332,7 @@ ICACHE_RAM_ATTR void TIMER1_COMPA_vect(void)
   #endif
 
 	// TODO: Write regs
+	SPI.write32(*(uint32_t*)&regs);
 
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.

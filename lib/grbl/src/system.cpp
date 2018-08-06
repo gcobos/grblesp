@@ -24,7 +24,8 @@
 void system_init()
 {
   SPI.begin();
-  SPI.setHwCs(false);
+  //SPI.setHwCs(false);
+  //SPI.setFrequency(80000000);
 
   /*CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
   #ifdef DISABLE_CONTROL_PIN_PULL_UP
