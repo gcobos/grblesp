@@ -59,7 +59,9 @@
 #define isequal_position_vector(a,b) !(memcmp(a, b, sizeof(float)*N_AXIS))
 
 // Bit field and masking macros
-#define bit(n) (1 << n)
+#ifndef bit
+  #define bit(n) (1 << n)
+#endif
 #define bit_true(x,mask) (x) |= (mask)
 #define bit_false(x,mask) (x) &= ~(mask)
 #define bit_istrue(x,mask) ((x & mask) != 0)
@@ -71,13 +73,7 @@
 uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
 // Non-blocking delay function used for general operation and suspend features.
-void delay_sec(float seconds, uint8_t mode);
-
-// Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
-void delay_ms(uint16_t ms);
-
-// Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
-void delay_us(uint32_t us);
+ICACHE_RAM_ATTR void delay_sec(float seconds, uint8_t mode);
 
 // Computes hypotenuse, avoiding avr-gcc's bloated version and the extra error checking.
 float hypot_f(float x, float y);

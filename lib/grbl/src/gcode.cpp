@@ -116,7 +116,6 @@ uint8_t gc_execute_line(char *line)
 
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     ESP.wdtFeed();
-    delay(0);
     // Import the next g-code word, expecting a letter followed by a value. Otherwise, error out.
     letter = line[char_counter];
     if((letter < 'A') || (letter > 'Z')) { FAIL(STATUS_EXPECTED_COMMAND_LETTER); } // [Expected word letter]

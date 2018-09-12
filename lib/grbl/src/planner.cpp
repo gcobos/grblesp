@@ -212,7 +212,7 @@ void plan_reset_buffer()
 }
 
 
-void plan_discard_current_block()
+ICACHE_RAM_ATTR void plan_discard_current_block()
 {
   if (block_buffer_head != block_buffer_tail) { // Discard non-empty buffer.
     uint8_t block_index = plan_next_block_index( block_buffer_tail );
@@ -224,21 +224,21 @@ void plan_discard_current_block()
 
 
 // Returns address of planner buffer block used by system motions. Called by segment generator.
-plan_block_t *plan_get_system_motion_block()
+ICACHE_RAM_ATTR plan_block_t *plan_get_system_motion_block()
 {
   return(&block_buffer[block_buffer_head]);
 }
 
 
 // Returns address of first planner block, if available. Called by various main program functions.
-plan_block_t *plan_get_current_block()
+ICACHE_RAM_ATTR plan_block_t *plan_get_current_block()
 {
   if (block_buffer_head == block_buffer_tail) { return(NULL); } // Buffer empty
   return(&block_buffer[block_buffer_tail]);
 }
 
 
-float plan_get_exec_block_exit_speed_sqr()
+ICACHE_RAM_ATTR float plan_get_exec_block_exit_speed_sqr()
 {
   uint8_t block_index = plan_next_block_index(block_buffer_tail);
   if (block_index == block_buffer_head) { return( 0.0 ); }
@@ -256,7 +256,7 @@ uint8_t plan_check_full_buffer()
 
 // Computes and returns block nominal speed based on running condition and override values.
 // NOTE: All system motion commands, such as homing/parking, are not subject to overrides.
-float plan_compute_profile_nominal_speed(plan_block_t *block)
+ICACHE_RAM_ATTR float plan_compute_profile_nominal_speed(plan_block_t *block)
 {
   float nominal_speed = block->programmed_rate;
   if (block->condition & PL_COND_FLAG_RAPID_MOTION) { nominal_speed *= (0.01*sys.r_override); }
@@ -271,7 +271,7 @@ float plan_compute_profile_nominal_speed(plan_block_t *block)
 
 // Computes and updates the max entry speed (sqr) of the block, based on the minimum of the junction's
 // previous and current nominal speeds and max junction speed.
-static void plan_compute_profile_parameters(plan_block_t *block, float nominal_speed, float prev_nominal_speed)
+ICACHE_RAM_ATTR static void plan_compute_profile_parameters(plan_block_t *block, float nominal_speed, float prev_nominal_speed)
 {
   // Compute the junction maximum entry based on the minimum of the junction speed and neighboring nominal speeds.
   if (nominal_speed > prev_nominal_speed) { block->max_entry_speed_sqr = prev_nominal_speed*prev_nominal_speed; }
@@ -331,13 +331,13 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
   uint8_t idx;
 
   // Copy position data based on type of motion being planned.
-  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) { 
+  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) {
     #ifdef COREXY
       position_steps[X_AXIS] = system_convert_corexy_to_x_axis_steps(sys_position);
       position_steps[Y_AXIS] = system_convert_corexy_to_y_axis_steps(sys_position);
       position_steps[Z_AXIS] = sys_position[Z_AXIS];
     #else
-      memcpy(position_steps, sys_position, sizeof(sys_position)); 
+      memcpy(position_steps, sys_position, sizeof(sys_position));
     #endif
   } else { memcpy(position_steps, pl.position, sizeof(pl.position)); }
 
@@ -390,7 +390,7 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
 
   // Store programmed rate.
   if (block->condition & PL_COND_FLAG_RAPID_MOTION) { block->programmed_rate = block->rapid_rate; }
-  else { 
+  else {
     block->programmed_rate = pl_data->feed_rate;
     if (block->condition & PL_COND_FLAG_INVERSE_TIME) { block->programmed_rate *= block->millimeters; }
   }

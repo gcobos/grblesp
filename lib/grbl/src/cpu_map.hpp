@@ -31,17 +31,17 @@
     void vector (void) __attribute__ ((signal,__INTR_ATTRS)) __VA_ARGS__; \
     void vector (void)
 
-#define _delay_us   delayMicroseconds
-#define _delay_ms   delay
-
 #define save_SREG() xt_rsil(2); // this routine will allow level 3 and above (returns an uint32_t)
 #define restore_SREG(state) xt_wsr_ps(state); sei(); // restore the state (uint32_t)
 
-volatile static struct {
-  uint8_t LIMIT_PORT;     // All inputs
-  uint8_t MISC_PORT;      // Inputs and outputs
-  uint8_t STEP_PORT;      // All outputs
-  uint8_t DIRECTION_PORT; // All outputs
+volatile static union {
+  uint32_t data;
+  struct {
+    uint8_t LIMIT_PORT:8;     // All inputs
+    uint8_t MISC_PORT:8;      // Inputs and outputs
+    uint8_t STEP_PORT:8;      // All outputs
+    uint8_t DIRECTION_PORT:8; // All outputs
+  };
 } regs;
 
 #ifdef CPU_MAP_ESP8266

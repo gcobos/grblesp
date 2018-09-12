@@ -73,8 +73,8 @@ void protocol_main_loop()
   uint8_t c;
   uint8_t is_rt;
   for (;;) {
-    delay(0);
     ESP.wdtFeed();
+    //delay(1);
 
     // Process one line of incoming serial data, as the data becomes available. Performs an
     // initial filtering by removing spaces and comments and capitalizing all letters.
@@ -124,7 +124,7 @@ void protocol_main_loop()
       if (is_rt) break;
 
       if ((c == '\n') || (c == '\r')) { // End of line reached
-
+        ESP.wdtFeed();
         protocol_execute_realtime(); // Runtime command check point.
         if (sys.abort) { return; } // Bail to calling function upon system abort
 
@@ -249,8 +249,8 @@ void protocol_auto_cycle_start()
 // limit switches, or the main program.
 void protocol_execute_realtime()
 {
-  delay(0);
   ESP.wdtFeed();
+  //delay(1);
   protocol_exec_rt_system();
   if (sys.suspend) { protocol_exec_rt_suspend(); }
 }
@@ -261,6 +261,7 @@ void protocol_execute_realtime()
 // NOTE: Do not alter this unless you know exactly what you are doing!
 void protocol_exec_rt_system()
 {
+  ESP.wdtFeed();
   uint8_t rt_exec; // Temp variable to avoid calling volatile multiple times.
   rt_exec = sys_rt_exec_alarm; // Copy volatile sys_rt_exec_alarm.
   if (rt_exec) { // Enter only if any bit flag is true
@@ -274,8 +275,8 @@ void protocol_exec_rt_system()
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
       system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {
-        delay(0);
         ESP.wdtFeed();
+        //delay(0);
         // Block everything, except reset and status reports, until user issues reset or power
         // cycles. Hard limits typically occur while unattended or not paying attention. Gives
         // the user and a GUI time to do what is needed before resetting, like killing the
@@ -414,7 +415,7 @@ void protocol_exec_rt_system()
       }
       system_clear_exec_state_flag(EXEC_CYCLE_START);
     }
-
+    ESP.wdtFeed();
     if (rt_exec & EXEC_CYCLE_STOP) {
 
       // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
@@ -450,7 +451,7 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag(EXEC_CYCLE_STOP);
     }
   }
-
+  ESP.wdtFeed();
   // Execute overrides.
   rt_exec = sys_rt_exec_motion_override; // Copy volatile sys_rt_exec_motion_override
   if (rt_exec) {

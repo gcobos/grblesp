@@ -24,9 +24,8 @@
 void system_init()
 {
   SPI.begin();
-  //SPI.setHwCs(false);
-  //SPI.setFrequency(80000000);
-
+  SPI.setHwCs(true);
+  SPI.setFrequency(20000000);
   /*CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
   #ifdef DISABLE_CONTROL_PIN_PULL_UP
     CONTROL_PORT &= ~(CONTROL_MASK); // Normal low operation. Requires external pull-down.
@@ -68,7 +67,7 @@ uint8_t system_control_get_state()
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
 /*
-ISR(CONTROL_INT_vect)
+ICACHE_RAM_ATTR ISR(CONTROL_INT_vect)
 {
   uint8_t pin = system_control_get_state();
   if (pin) {
@@ -130,6 +129,8 @@ uint8_t system_execute_line(char *line)
   uint8_t char_counter = 1;
   uint8_t helper_var = 0; // Helper variable
   float parameter, value;
+
+  ESP.wdtFeed();
   switch( line[char_counter] ) {
     case 0 : report_grbl_help(); break;
     case 'J' : // Jogging

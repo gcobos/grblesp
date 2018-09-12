@@ -106,7 +106,7 @@ void report_grbl_settings();
 void report_echo_line_received(char *line);
 
 // Prints realtime status report
-void report_realtime_status();
+ICACHE_RAM_ATTR void report_realtime_status();
 
 // Prints recorded probe position
 void report_probe_parameters();
@@ -115,7 +115,7 @@ void report_probe_parameters();
 void report_ngc_parameters();
 
 // Prints current g-code parser mode state
-void report_gcode_modes();
+ICACHE_RAM_ATTR void report_gcode_modes();
 
 // Prints startup line when requested and executed.
 void report_startup_line(uint8_t n, char *line);

@@ -107,22 +107,22 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data);
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.
-void plan_discard_current_block();
+ICACHE_RAM_ATTR void plan_discard_current_block();
 
 // Gets the planner block for the special system motion cases. (Parking/Homing)
-plan_block_t *plan_get_system_motion_block();
+ICACHE_RAM_ATTR plan_block_t *plan_get_system_motion_block();
 
 // Gets the current block. Returns NULL if buffer empty
-plan_block_t *plan_get_current_block();
+ICACHE_RAM_ATTR plan_block_t *plan_get_current_block();
 
 // Called periodically by step segment buffer. Mostly used internally by planner.
 uint8_t plan_next_block_index(uint8_t block_index);
 
 // Called by step segment buffer when computing executing block velocity profile.
-float plan_get_exec_block_exit_speed_sqr();
+ICACHE_RAM_ATTR float plan_get_exec_block_exit_speed_sqr();
 
 // Called by main program during planner calculations and step segment buffer during initialization.
-float plan_compute_profile_nominal_speed(plan_block_t *block);
+ICACHE_RAM_ATTR float plan_compute_profile_nominal_speed(plan_block_t *block);
 
 // Re-calculates buffered motions profile parameters upon a motion-based override change.
 void plan_update_velocity_profile_parameters();

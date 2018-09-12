@@ -215,7 +215,7 @@ static st_prep_t prep;
 
 // Stepper state initialization. Cycle should only start if the st.cycle_start flag is
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
-void st_wake_up()
+ICACHE_RAM_ATTR void st_wake_up()
 {
   // Enable stepper drivers.
   //if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
@@ -243,7 +243,7 @@ void st_wake_up()
 
 
 // Stepper shutdown
-void st_go_idle()
+ICACHE_RAM_ATTR void st_go_idle()
 {
   // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
   /*TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt
@@ -257,8 +257,9 @@ void st_go_idle()
   if (((settings.stepper_idle_lock_time != 0xff) || sys_rt_exec_alarm || sys.state == STATE_SLEEP) && sys.state != STATE_HOMING) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
-    delay_ms(settings.stepper_idle_lock_time);
-    pin_state = true; // Override. Disable steppers.
+		ESP.wdtFeed();
+		delayMicroseconds(settings.stepper_idle_lock_time);
+		pin_state = true; // Override. Disable steppers.
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   //if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
@@ -331,14 +332,14 @@ ICACHE_RAM_ATTR void TIMER1_COMPA_vect(void)
     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
   #endif
 
-	// TODO: Write regs
-	SPI.write32(*(uint32_t*)&regs);
-
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   //TCNT0 = st.step_pulse_time; // Reload Timer0 counter
   //TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler
-	timer0_write(ESP.getCycleCount() + st.step_pulse_time + 10000);
+	timer0_write(ESP.getCycleCount() + st.step_pulse_time);
+
+	// Write regs
+	SPI.write32(regs.data);
 
 	busy = true;
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time.
@@ -529,8 +530,8 @@ ICACHE_RAM_ATTR void TIMER1_COMPA_vect(void)
 //ISR(TIMER0_OVF_vect)
 ICACHE_RAM_ATTR void TIMER0_OVF_vect(void)
 {
-	// timer0 cannot be disbled. It needs to have some value in the future or wdt reset will happen
-	timer0_write(ESP.getCycleCount() + 80000000);
+	// timer0 cannot be disabled. It needs to have some value in the future or wdt reset will happen
+	timer0_write(ESP.getCycleCount() + 10000); //-1);
 
   // Reset stepping pins (leave the direction pins)
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK);
@@ -543,7 +544,7 @@ ICACHE_RAM_ATTR void TIMER0_OVF_vect(void)
   // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
   // The new timing between direction, step pulse, and step complete events are setup in the
   // st_wake_up() routine.
-  ISR(TIMER0_COMPA_vect)
+  ICACHE_RAM_ATTR ISR(TIMER0_COMPA_vect)
   {
     STEP_PORT = st.step_bits; // Begin step pulse.
   }
@@ -551,7 +552,7 @@ ICACHE_RAM_ATTR void TIMER0_OVF_vect(void)
 
 
 // Generates the step and direction port invert masks used in the Stepper Interrupt Driver.
-void st_generate_step_dir_invert_masks()
+ICACHE_RAM_ATTR void st_generate_step_dir_invert_masks()
 {
   uint8_t idx;
   step_port_invert_mask = 0;
@@ -564,7 +565,7 @@ void st_generate_step_dir_invert_masks()
 
 
 // Reset and clear stepper subsystem variables
-void st_reset()
+ICACHE_RAM_ATTR void st_reset()
 {
   // Initialize stepper driver idle state.
   st_go_idle();
@@ -589,20 +590,22 @@ void st_reset()
 
 
 // Initialize and start the stepper motor subsystem
-void stepper_init()
+ICACHE_RAM_ATTR void stepper_init()
 {
   // Configure step and direction interface pins
   //STEP_DDR |= STEP_MASK;
   //STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   //DIRECTION_DDR |= DIRECTION_MASK;
 
+	timer0_isr_init();
+	timer0_attachInterrupt(TIMER0_OVF_vect);
+	timer0_write(ESP.getCycleCount() + 10000); //-1);
+
 	timer1_isr_init();
 	timer1_disable();
 	timer1_attachInterrupt(TIMER1_COMPA_vect);
 	timer1_write(1);
 
-	timer0_isr_init();
-	timer0_attachInterrupt(TIMER0_OVF_vect);
   // Configure Timer 1: Stepper Driver Interrupt
   /*TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
   TCCR1B |=  (1<<WGM12);
@@ -624,7 +627,7 @@ void stepper_init()
 
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
-void st_update_plan_block_parameters()
+ICACHE_RAM_ATTR void st_update_plan_block_parameters()
 {
   if (pl_block != NULL) { // Ignore if at start of a new block.
     prep.recalculate_flag |= PREP_FLAG_RECALCULATE;
@@ -645,7 +648,7 @@ static uint8_t st_next_block_index(uint8_t block_index)
 
 #ifdef PARKING_ENABLE
   // Changes the run state of the step segment buffer to execute the special parking motion.
-  void st_parking_setup_buffer()
+  ICACHE_RAM_ATTR void st_parking_setup_buffer()
   {
     // Store step execution data of partially completed block, if necessary.
     if (prep.recalculate_flag & PREP_FLAG_HOLD_PARTIAL_BLOCK) {
@@ -662,7 +665,7 @@ static uint8_t st_next_block_index(uint8_t block_index)
 
 
   // Restores the step segment buffer to the normal run state after a parking motion.
-  void st_parking_restore_buffer()
+  ICACHE_RAM_ATTR void st_parking_restore_buffer()
   {
     // Restore step execution data and flags of partially completed block, if necessary.
     if (prep.recalculate_flag & PREP_FLAG_HOLD_PARTIAL_BLOCK) {
@@ -694,14 +697,13 @@ static uint8_t st_next_block_index(uint8_t block_index)
    Currently, the segment buffer conservatively holds roughly up to 40-50 msec of steps.
    NOTE: Computation units are in steps, millimeters, and minutes.
 */
-void st_prep_buffer()
+ICACHE_RAM_ATTR void st_prep_buffer()
 {
   // Block step prep buffer, while in a suspend state and there is no suspend motion to execute.
   if (bit_istrue(sys.step_control,STEP_CONTROL_END_MOTION)) { return; }
 
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-		//delay(0);
-		//ESP.wdtFeed();
+		ESP.wdtFeed();
 		//Serial.printf("%d, %d\n", segment_buffer_tail, segment_next_head);
     // Determine if we need to load a new planner block or if the block needs to be recomputed.
     if (pl_block == NULL) {
@@ -971,8 +973,7 @@ void st_prep_buffer()
         }
       }
 
-			//delay(0);
-			//ESP.wdtFeed();
+			ESP.wdtFeed();
     } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete.
 
     #ifdef VARIABLE_SPINDLE
@@ -1038,7 +1039,7 @@ void st_prep_buffer()
     float inv_rate = dt/(last_n_steps_remaining - step_dist_remaining); // Compute adjusted step rate inverse
 
     // Compute CPU cycles per step for the prepped segment.
-    uint32_t cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)
+    uint32_t cycles = ceil(TICKS_PER_MICROSECOND*1000000*60*inv_rate); // (cycles/step)
 
     #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
       // Compute step timing and multi-axis smoothing level.
@@ -1111,7 +1112,7 @@ void st_prep_buffer()
 // however is not exactly the current speed, but the speed computed in the last step segment
 // in the segment buffer. It will always be behind by up to the number of segment blocks (-1)
 // divided by the ACCELERATION TICKS PER SECOND in seconds.
-float st_get_realtime_rate()
+ICACHE_RAM_ATTR float st_get_realtime_rate()
 {
   if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD | STATE_JOG | STATE_SAFETY_DOOR)){
     return prep.current_speed;

@@ -98,7 +98,7 @@ uint8_t limits_get_state()
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 #ifndef ENABLE_SOFTWARE_DEBOUNCE
-  ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
+  ICACHE_RAM_ATTR ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
   {
     // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
@@ -122,8 +122,8 @@ uint8_t limits_get_state()
   }
 #else // OPTIONAL: Software debounce limit pin routine.
   // Upon limit pin change, enable watchdog timer to create a short delay.
-  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
-  ISR(WDT_vect) // Watchdog timer ISR
+  ICACHE_RAM_ATTR ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
+  ICACHE_RAM_ATTR ISR(WDT_vect) // Watchdog timer ISR
   {
     WDTCSR &= ~(1<<WDIE); // Disable watchdog timer.
     if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state.
@@ -233,6 +233,7 @@ void limits_go_home(uint8_t cycle_mask)
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
     st_wake_up(); // Initiate motion
     do {
+      ESP.wdtFeed();
       if (approach) {
         // Check limit state. Lock out cycle axes when they change.
         limit_state = limits_get_state();
@@ -250,7 +251,6 @@ void limits_go_home(uint8_t cycle_mask)
         }
         sys.homing_axis_lock = axislock;
       }
-
       st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
 
       // Exit routines: No time to run protocol_execute_realtime() in this loop.
@@ -278,7 +278,7 @@ void limits_go_home(uint8_t cycle_mask)
     } while (STEP_MASK & axislock);
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
-    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
+    delay(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
 
     // Reverse direction and reset homing rate for locate cycle(s).
     approach = !approach;

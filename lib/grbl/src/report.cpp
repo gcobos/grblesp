@@ -125,7 +125,8 @@ void report_alarm_message(uint8_t alarm_code)
   printPgmString(PSTR("ALARM:"));
   print_uint8_base10(alarm_code);
   report_util_line_feed();
-  delay_ms(500); // Force delay to ensure message clears serial write buffer.
+  ESP.wdtFeed();
+  delay(1000); // Force delay to ensure message clears serial write buffer.
 }
 
 // Prints feedback messages. This serves as a centralized method to provide additional
@@ -270,7 +271,7 @@ void report_ngc_parameters()
 
 
 // Print current gcode parser mode state
-void report_gcode_modes()
+ICACHE_RAM_ATTR void report_gcode_modes()
 {
   printPgmString(PSTR("[GC:G"));
   if (gc_state.modal.motion >= MOTION_MODE_PROBE_TOWARD) {
@@ -456,7 +457,7 @@ void report_echo_line_received(char *line)
  // specific needs, but the desired real-time data report must be as short as possible. This is
  // requires as it minimizes the computational overhead and allows grbl to keep running smoothly,
  // especially during g-code programs with fast, short line segments and high frequency reports (5-20Hz).
-void report_realtime_status()
+ICACHE_RAM_ATTR void report_realtime_status()
 {
   uint8_t idx;
   int32_t current_position[N_AXIS]; // Copy current state of the system position variable
