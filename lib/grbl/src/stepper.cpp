@@ -360,7 +360,7 @@ ICACHE_RAM_ATTR void TIMER1_COMPA_vect(void)
 
       // Initialize step segment timing per step and load number of steps to execute.
       //OCR1A = st.exec_segment->cycles_per_tick;
-			timer1_write(st.exec_segment->cycles_per_tick);
+			timer1_write(st.exec_segment->cycles_per_tick<<3);
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
       // NOTE: When the segment data index changes, this indicates a new planner block.
@@ -704,7 +704,6 @@ ICACHE_RAM_ATTR void st_prep_buffer()
 
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
 		ESP.wdtFeed();
-		//Serial.printf("%d, %d\n", segment_buffer_tail, segment_next_head);
     // Determine if we need to load a new planner block or if the block needs to be recomputed.
     if (pl_block == NULL) {
 
