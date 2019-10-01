@@ -98,7 +98,8 @@ uint8_t limits_get_state()
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 #ifndef ENABLE_SOFTWARE_DEBOUNCE
-  ICACHE_RAM_ATTR ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
+  // void LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
+  void LIMIT_INT_vect(void)
   {
     // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
@@ -122,8 +123,8 @@ uint8_t limits_get_state()
   }
 #else // OPTIONAL: Software debounce limit pin routine.
   // Upon limit pin change, enable watchdog timer to create a short delay.
-  ICACHE_RAM_ATTR ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
-  ICACHE_RAM_ATTR ISR(WDT_vect) // Watchdog timer ISR
+  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
+  ISR(WDT_vect) // Watchdog timer ISR
   {
     WDTCSR &= ~(1<<WDIE); // Disable watchdog timer.
     if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state.
@@ -174,7 +175,7 @@ void limits_go_home(uint8_t cycle_mask)
     if (bit_istrue(cycle_mask,bit(idx))) {
       // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
       // NOTE: settings.max_travel[] is stored as a negative value.
-      max_travel = max(max_travel,(-HOMING_AXIS_SEARCH_SCALAR)*settings.max_travel[idx]);
+      max_travel = max(max_travel,(float)(-HOMING_AXIS_SEARCH_SCALAR)*settings.max_travel[idx]);
     }
   }
 
@@ -184,7 +185,8 @@ void limits_go_home(uint8_t cycle_mask)
 
   uint8_t limit_state, axislock, n_active_axis;
   do {
-
+    ESP.wdtFeed();
+    delay(0);
     system_convert_array_steps_to_mpos(target,sys_position);
 
     // Initialize and declare variables needed for homing routine.
@@ -234,6 +236,7 @@ void limits_go_home(uint8_t cycle_mask)
     st_wake_up(); // Initiate motion
     do {
       ESP.wdtFeed();
+      delay(0);
       if (approach) {
         // Check limit state. Lock out cycle axes when they change.
         limit_state = limits_get_state();
@@ -278,7 +281,7 @@ void limits_go_home(uint8_t cycle_mask)
     } while (STEP_MASK & axislock);
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
-    delay(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
+    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
 
     // Reverse direction and reset homing rate for locate cycle(s).
     approach = !approach;
@@ -350,6 +353,8 @@ void limits_soft_check(float *target)
     if (sys.state == STATE_CYCLE) {
       system_set_exec_state_flag(EXEC_FEED_HOLD);
       do {
+        ESP.wdtFeed();
+        delay(0);
         protocol_execute_realtime();
         if (sys.abort) { return; }
       } while ( sys.state != STATE_IDLE );

@@ -25,7 +25,9 @@ void system_init()
 {
   SPI.begin();
   SPI.setHwCs(true);
-  SPI.setFrequency(20000000);
+  SPI.setFrequency(F_STEPPER_TIMER);
+
+  attachInterrupt(INPUT_GPIO_PIN, pin_change_vect, CHANGE);
   /*CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
   #ifdef DISABLE_CONTROL_PIN_PULL_UP
     CONTROL_PORT &= ~(CONTROL_MASK); // Normal low operation. Requires external pull-down.
@@ -46,7 +48,7 @@ uint8_t system_control_get_state()
   uint8_t control_state = 0;
   // TODO: Use it to write and read the whole 32bit register
 
-  /*uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
+  uint8_t pin = (CONTROL_PORT & CONTROL_MASK);
   #ifdef INVERT_CONTROL_PIN_MASK
     pin ^= INVERT_CONTROL_PIN_MASK;
   #endif
@@ -57,7 +59,7 @@ uint8_t system_control_get_state()
     if (bit_isfalse(pin,(1<<CONTROL_RESET_BIT))) { control_state |= CONTROL_PIN_INDEX_RESET; }
     if (bit_isfalse(pin,(1<<CONTROL_FEED_HOLD_BIT))) { control_state |= CONTROL_PIN_INDEX_FEED_HOLD; }
     if (bit_isfalse(pin,(1<<CONTROL_CYCLE_START_BIT))) { control_state |= CONTROL_PIN_INDEX_CYCLE_START; }
-  }*/
+  }
   return(control_state);
 }
 
@@ -66,9 +68,8 @@ uint8_t system_control_get_state()
 // only the realtime command execute variable to have the main program execute these when
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
-/*
-ICACHE_RAM_ATTR ISR(CONTROL_INT_vect)
-{
+
+ICACHE_RAM_ATTR void pin_change_vect() {
   uint8_t pin = system_control_get_state();
   if (pin) {
     if (bit_istrue(pin,CONTROL_PIN_INDEX_RESET)) {
@@ -85,7 +86,6 @@ ICACHE_RAM_ATTR ISR(CONTROL_INT_vect)
     }
   }
 }
-*/
 
 // Returns if safety door is ajar(T) or closed(F), based on pin state.
 uint8_t system_check_safety_door_ajar()
@@ -103,6 +103,7 @@ void system_execute_startup(char *line)
 {
   uint8_t n;
   for (n=0; n < N_STARTUP_LINE; n++) {
+    delay(0);
     if (!(settings_read_startup_line(n, line))) {
       line[0] = 0;
       report_execute_startup_message(line,STATUS_SETTING_READ_FAIL);
@@ -130,7 +131,6 @@ uint8_t system_execute_line(char *line)
   uint8_t helper_var = 0; // Helper variable
   float parameter, value;
 
-  ESP.wdtFeed();
   switch( line[char_counter] ) {
     case 0 : report_grbl_help(); break;
     case 'J' : // Jogging
@@ -217,6 +217,7 @@ uint8_t system_execute_line(char *line)
               if(line[char_counter++] != '=') { return(STATUS_INVALID_STATEMENT); }
               helper_var = char_counter; // Set helper variable as counter to start of user info line.
               do {
+                delay(0);
                 line[char_counter-helper_var] = line[char_counter];
               } while (line[char_counter++] != 0);
               settings_store_build_info(line);
@@ -243,6 +244,7 @@ uint8_t system_execute_line(char *line)
         case 'N' : // Startup lines. [IDLE/ALARM]
           if ( line[++char_counter] == 0 ) { // Print startup lines
             for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
+              delay(0);
               if (!(settings_read_startup_line(helper_var, line))) {
                 report_status_message(STATUS_SETTING_READ_FAIL);
               } else {
@@ -262,6 +264,7 @@ uint8_t system_execute_line(char *line)
             // Prepare sending gcode block to gcode parser by shifting all characters
             helper_var = char_counter; // Set helper variable as counter to start of gcode block
             do {
+              delay(0);
               line[char_counter-helper_var] = line[char_counter];
             } while (line[char_counter++] != 0);
             // Execute gcode block to ensure block is valid.

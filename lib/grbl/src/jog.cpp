@@ -24,7 +24,6 @@
 // Sets up valid jog motion received from g-code parser, checks for soft-limits, and executes the jog.
 uint8_t jog_execute(plan_line_data_t *pl_data, parser_block_t *gc_block)
 {
-  ESP.wdtFeed();
   // Initialize planner data struct for jogging motions.
   // NOTE: Spindle and coolant are allowed to fully function with overrides during a jog.
   pl_data->feed_rate = gc_block->values.f;

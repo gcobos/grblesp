@@ -35,7 +35,7 @@ static void report_util_line_feed() { printPgmString(PSTR("\r\n")); }
 static void report_util_feedback_line_feed() { serial_write(']'); report_util_line_feed(); }
 static void report_util_gcode_modes_G() { printPgmString(PSTR(" G")); }
 static void report_util_gcode_modes_M() { printPgmString(PSTR(" M")); }
-static void report_util_comment_line_feed() { serial_write(')'); report_util_line_feed(); }
+// static void report_util_comment_line_feed() { serial_write(')'); report_util_line_feed(); }
 static void report_util_axis_values(float *axis_value) {
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
@@ -44,6 +44,7 @@ static void report_util_axis_values(float *axis_value) {
   }
 }
 
+/*
 static void report_util_setting_string(uint8_t n) {
   serial_write(' ');
   serial_write('(');
@@ -88,6 +89,7 @@ static void report_util_setting_string(uint8_t n) {
   }
   report_util_comment_line_feed();
 }
+*/
 
 static void report_util_uint8_setting(uint8_t n, int val) {
   report_util_setting_prefix(n);
@@ -125,8 +127,7 @@ void report_alarm_message(uint8_t alarm_code)
   printPgmString(PSTR("ALARM:"));
   print_uint8_base10(alarm_code);
   report_util_line_feed();
-  ESP.wdtFeed();
-  delay(1000); // Force delay to ensure message clears serial write buffer.
+  delay_ms(300); // Force delay to ensure message clears serial write buffer.
 }
 
 // Prints feedback messages. This serves as a centralized method to provide additional
@@ -271,7 +272,7 @@ void report_ngc_parameters()
 
 
 // Print current gcode parser mode state
-ICACHE_RAM_ATTR void report_gcode_modes()
+void report_gcode_modes()
 {
   printPgmString(PSTR("[GC:G"));
   if (gc_state.modal.motion >= MOTION_MODE_PROBE_TOWARD) {
@@ -411,6 +412,12 @@ void report_build_info(char *line)
   #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
     serial_write('R');
   #endif
+  #ifndef HOMING_INIT_LOCK
+    serial_write('L');
+  #endif
+  #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+    serial_write('+');
+  #endif
   #ifndef ENABLE_RESTORE_EEPROM_WIPE_ALL // NOTE: Shown when disabled.
     serial_write('*');
   #endif
@@ -429,10 +436,6 @@ void report_build_info(char *line)
   #ifndef FORCE_BUFFER_SYNC_DURING_WCO_CHANGE // NOTE: Shown when disabled.
     serial_write('W');
   #endif
-  #ifndef HOMING_INIT_LOCK
-    serial_write('L');
-  #endif
-
   // NOTE: Compiled values, like override increments/max/min values, may be added at some point later.
   serial_write(',');
   print_uint8_base10(BLOCK_BUFFER_SIZE-1);
@@ -457,7 +460,7 @@ void report_echo_line_received(char *line)
  // specific needs, but the desired real-time data report must be as short as possible. This is
  // requires as it minimizes the computational overhead and allows grbl to keep running smoothly,
  // especially during g-code programs with fast, short line segments and high frequency reports (5-20Hz).
-ICACHE_RAM_ATTR void report_realtime_status()
+void report_realtime_status()
 {
   uint8_t idx;
   int32_t current_position[N_AXIS]; // Copy current state of the system position variable
@@ -527,7 +530,7 @@ ICACHE_RAM_ATTR void report_realtime_status()
       printPgmString(PSTR("|Bf:"));
       print_uint8_base10(plan_get_block_buffer_available());
       serial_write(',');
-      print_uint8_base10(serial_get_rx_buffer_available());
+      print_uint8_base10(serial_get_rx_buffer_available(CLIENT_ALL));
     }
   #endif
 
@@ -639,6 +642,7 @@ ICACHE_RAM_ATTR void report_realtime_status()
   serial_write('>');
   report_util_line_feed();
 }
+
 
 #ifdef DEBUG
   void report_realtime_debug()

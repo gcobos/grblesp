@@ -18,19 +18,18 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <Schedule.h>
 #include "grbl.hpp"
-
-extern "C" void esp_schedule();
 
 // Define line flags. Includes comment type tracking and line overflow detection.
 #define LINE_FLAG_OVERFLOW bit(0)
 #define LINE_FLAG_COMMENT_PARENTHESES bit(1)
 #define LINE_FLAG_COMMENT_SEMICOLON bit(2)
 
+
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 
 static void protocol_exec_rt_suspend();
+
 
 /*
   GRBL PRIMARY LOOP:
@@ -71,127 +70,84 @@ void protocol_main_loop()
   uint8_t line_flags = 0;
   uint8_t char_counter = 0;
   uint8_t c;
-  uint8_t is_rt;
   for (;;) {
-    ESP.wdtFeed();
-    //delay(1);
-
+    delay(0);
     // Process one line of incoming serial data, as the data becomes available. Performs an
     // initial filtering by removing spaces and comments and capitalizing all letters.
-    while((c = serial_read()) != SERIAL_NO_DATA) {
-      is_rt = 0;
-      // Pick off realtime command characters directly from the serial stream. These characters are
-      // not passed into the main buffer, but these set system state flag bits for realtime execution.
-      switch (c) {
-        case CMD_RESET:         is_rt = 1; mc_reset(); break; // Call motion control reset routine.
-        case CMD_STATUS_REPORT: is_rt = 1; system_set_exec_state_flag(EXEC_STATUS_REPORT); break; // Set as true
-        case CMD_CYCLE_START:   is_rt = 1; system_set_exec_state_flag(EXEC_CYCLE_START); break; // Set as true
-        case CMD_FEED_HOLD:     is_rt = 1; system_set_exec_state_flag(EXEC_FEED_HOLD); break; // Set as true
-        default :
-          if (c > 0x7F) { // Real-time control characters are extended ACSII only.
-            is_rt = 1;
-            switch(c) {
-              case CMD_SAFETY_DOOR:   system_set_exec_state_flag(EXEC_SAFETY_DOOR); break; // Set as true
-              case CMD_JOG_CANCEL:
-                if (sys.state & STATE_JOG) { // Block all other states from invoking motion cancel.
-                  system_set_exec_state_flag(EXEC_MOTION_CANCEL);
-                }
-                break;
-              #ifdef DEBUG
-                case CMD_DEBUG_REPORT: {uint32_t sreg = save_SREG(); cli(); bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); restore_SREG(sreg);} break;
-              #endif
-              case CMD_FEED_OVR_RESET: system_set_exec_motion_override_flag(EXEC_FEED_OVR_RESET); break;
-              case CMD_FEED_OVR_COARSE_PLUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_COARSE_PLUS); break;
-              case CMD_FEED_OVR_COARSE_MINUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_COARSE_MINUS); break;
-              case CMD_FEED_OVR_FINE_PLUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_FINE_PLUS); break;
-              case CMD_FEED_OVR_FINE_MINUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_FINE_MINUS); break;
-              case CMD_RAPID_OVR_RESET: system_set_exec_motion_override_flag(EXEC_RAPID_OVR_RESET); break;
-              case CMD_RAPID_OVR_MEDIUM: system_set_exec_motion_override_flag(EXEC_RAPID_OVR_MEDIUM); break;
-              case CMD_RAPID_OVR_LOW: system_set_exec_motion_override_flag(EXEC_RAPID_OVR_LOW); break;
-              case CMD_SPINDLE_OVR_RESET: system_set_exec_accessory_override_flag(EXEC_SPINDLE_OVR_RESET); break;
-              case CMD_SPINDLE_OVR_COARSE_PLUS: system_set_exec_accessory_override_flag(EXEC_SPINDLE_OVR_COARSE_PLUS); break;
-              case CMD_SPINDLE_OVR_COARSE_MINUS: system_set_exec_accessory_override_flag(EXEC_SPINDLE_OVR_COARSE_MINUS); break;
-              case CMD_SPINDLE_OVR_FINE_PLUS: system_set_exec_accessory_override_flag(EXEC_SPINDLE_OVR_FINE_PLUS); break;
-              case CMD_SPINDLE_OVR_FINE_MINUS: system_set_exec_accessory_override_flag(EXEC_SPINDLE_OVR_FINE_MINUS); break;
-              case CMD_SPINDLE_OVR_STOP: system_set_exec_accessory_override_flag(EXEC_SPINDLE_OVR_STOP); break;
-              case CMD_COOLANT_FLOOD_OVR_TOGGLE: system_set_exec_accessory_override_flag(EXEC_COOLANT_FLOOD_OVR_TOGGLE); break;
-              #ifdef ENABLE_M7
-                case CMD_COOLANT_MIST_OVR_TOGGLE: system_set_exec_accessory_override_flag(EXEC_COOLANT_MIST_OVR_TOGGLE); break;
-              #endif
-          }
-        }
-      }
-      if (is_rt) break;
+    uint8_t client = CLIENT_SERIAL;
+    for (client = 1; client <= CLIENT_COUNT; client++)
+    {
+      while((c = serial_read(client)) != SERIAL_NO_DATA) {
+        delay(0);
+        if ((c == '\n') || (c == '\r')) { // End of line reached
+          protocol_execute_realtime(); // Runtime command check point.
+          if (sys.abort) { return; } // Bail to calling function upon system abort
 
-      if ((c == '\n') || (c == '\r')) { // End of line reached
-        ESP.wdtFeed();
-        protocol_execute_realtime(); // Runtime command check point.
-        if (sys.abort) { return; } // Bail to calling function upon system abort
+          line[char_counter] = 0; // Set string termination character.
+          #ifdef REPORT_ECHO_LINE_RECEIVED
+            report_echo_line_received(line);
+          #endif
 
-        line[char_counter] = 0; // Set string termination character.
-        #ifdef REPORT_ECHO_LINE_RECEIVED
-          report_echo_line_received(line);
-        #endif
-
-        // Direct and execute one line of formatted input, and report status of execution.
-        if (line_flags & LINE_FLAG_OVERFLOW) {
-          // Report line overflow error.
-          report_status_message(STATUS_OVERFLOW);
-        } else if (line[0] == 0) {
-          // Empty or comment line. For syncing purposes.
-          report_status_message(STATUS_OK);
-        } else if (line[0] == '$') {
-          // Grbl '$' system command
-          report_status_message(system_execute_line(line));
-        } else if (sys.state & (STATE_ALARM | STATE_JOG)) {
-          // Everything else is gcode. Block if in alarm or jog mode.
-          report_status_message(STATUS_SYSTEM_GC_LOCK);
-        } else {
-          // Parse and execute g-code block.
-          report_status_message(gc_execute_line(line));
-        }
-
-        // Reset tracking data for next line.
-        line_flags = 0;
-        char_counter = 0;
-
-      } else {
-
-        if (line_flags) {
-          // Throw away all (except EOL) comment characters and overflow characters.
-          if (c == ')') {
-            // End of '()' comment. Resume line allowed.
-            if (line_flags & LINE_FLAG_COMMENT_PARENTHESES) { line_flags &= ~(LINE_FLAG_COMMENT_PARENTHESES); }
-          }
-        } else {
-          if (c <= ' ') {
-            // Throw away whitepace and control characters
-          } else if (c == '/') {
-            // Block delete NOT SUPPORTED. Ignore character.
-            // NOTE: If supported, would simply need to check the system if block delete is enabled.
-          } else if (c == '(') {
-            // Enable comments flag and ignore all characters until ')' or EOL.
-            // NOTE: This doesn't follow the NIST definition exactly, but is good enough for now.
-            // In the future, we could simply remove the items within the comments, but retain the
-            // comment control characters, so that the g-code parser can error-check it.
-            line_flags |= LINE_FLAG_COMMENT_PARENTHESES;
-          } else if (c == ';') {
-            // NOTE: ';' comment to EOL is a LinuxCNC definition. Not NIST.
-            line_flags |= LINE_FLAG_COMMENT_SEMICOLON;
-          // TODO: Install '%' feature
-          // } else if (c == '%') {
-            // Program start-end percent sign NOT SUPPORTED.
-            // NOTE: This maybe installed to tell Grbl when a program is running vs manual input,
-            // where, during a program, the system auto-cycle start will continue to execute
-            // everything until the next '%' sign. This will help fix resuming issues with certain
-            // functions that empty the planner buffer to execute its task on-time.
-          } else if (char_counter >= (LINE_BUFFER_SIZE-1)) {
-            // Detect line buffer overflow and set flag.
-            line_flags |= LINE_FLAG_OVERFLOW;
-          } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
-            line[char_counter++] = c-'a'+'A';
+          // Direct and execute one line of formatted input, and report status of execution.
+          if (line_flags & LINE_FLAG_OVERFLOW) {
+            // Report line overflow error.
+            report_status_message(STATUS_OVERFLOW);
+          } else if (line[0] == 0) {
+            // Empty or comment line. For syncing purposes.
+            report_status_message(STATUS_OK);
+          } else if (line[0] == '$') {
+            // Grbl '$' system command
+            report_status_message(system_execute_line(line));
+          } else if (sys.state & (STATE_ALARM | STATE_JOG)) {
+            // Everything else is gcode. Block if in alarm or jog mode.
+            report_status_message(STATUS_SYSTEM_GC_LOCK);
           } else {
-            line[char_counter++] = c;
+            // Parse and execute g-code block.
+            report_status_message(gc_execute_line(line));
+          }
+
+          // Reset tracking data for next line.
+          line_flags = 0;
+          char_counter = 0;
+
+        } else {
+
+          if (line_flags) {
+            // Throw away all (except EOL) comment characters and overflow characters.
+            if (c == ')') {
+              // End of '()' comment. Resume line allowed.
+              if (line_flags & LINE_FLAG_COMMENT_PARENTHESES) { line_flags &= ~(LINE_FLAG_COMMENT_PARENTHESES); }
+            }
+          } else {
+            if (c <= ' ') {
+              // Throw away whitepace and control characters
+            } else if (c == '/') {
+              // Block delete NOT SUPPORTED. Ignore character.
+              // NOTE: If supported, would simply need to check the system if block delete is enabled.
+            } else if (c == '(') {
+              // Enable comments flag and ignore all characters until ')' or EOL.
+              // NOTE: This doesn't follow the NIST definition exactly, but is good enough for now.
+              // In the future, we could simply remove the items within the comments, but retain the
+              // comment control characters, so that the g-code parser can error-check it.
+              line_flags |= LINE_FLAG_COMMENT_PARENTHESES;
+            } else if (c == ';') {
+              // NOTE: ';' comment to EOL is a LinuxCNC definition. Not NIST.
+              line_flags |= LINE_FLAG_COMMENT_SEMICOLON;
+            // TODO: Install '%' feature
+            // } else if (c == '%') {
+              // Program start-end percent sign NOT SUPPORTED.
+              // NOTE: This maybe installed to tell Grbl when a program is running vs manual input,
+              // where, during a program, the system auto-cycle start will continue to execute
+              // everything until the next '%' sign. This will help fix resuming issues with certain
+              // functions that empty the planner buffer to execute its task on-time.
+            } else if (char_counter >= (LINE_BUFFER_SIZE-1)) {
+              // Detect line buffer overflow and set flag.
+              line_flags |= LINE_FLAG_OVERFLOW;
+            } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
+              line[char_counter++] = c-'a'+'A';
+            } else {
+              line[char_counter++] = c;
+            }
           }
         }
       }
@@ -205,6 +161,7 @@ void protocol_main_loop()
     protocol_execute_realtime();  // Runtime command check point.
     if (sys.abort) { return; } // Bail to main() program loop to reset system.
   }
+
   return; /* Never reached */
 }
 
@@ -216,6 +173,8 @@ void protocol_buffer_synchronize()
   // If system is queued, ensure cycle resumes if the auto start flag is present.
   protocol_auto_cycle_start();
   do {
+    ESP.wdtFeed();
+    delay(0);
     protocol_execute_realtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
   } while (plan_get_current_block() || (sys.state == STATE_CYCLE));
@@ -249,19 +208,15 @@ void protocol_auto_cycle_start()
 // limit switches, or the main program.
 void protocol_execute_realtime()
 {
-  ESP.wdtFeed();
-  //delay(1);
   protocol_exec_rt_system();
   if (sys.suspend) { protocol_exec_rt_suspend(); }
 }
-
 
 // Executes run-time commands, when required. This function primarily operates as Grbl's state
 // machine and controls the various real-time features Grbl has to offer.
 // NOTE: Do not alter this unless you know exactly what you are doing!
 void protocol_exec_rt_system()
 {
-  ESP.wdtFeed();
   uint8_t rt_exec; // Temp variable to avoid calling volatile multiple times.
   rt_exec = sys_rt_exec_alarm; // Copy volatile sys_rt_exec_alarm.
   if (rt_exec) { // Enter only if any bit flag is true
@@ -276,7 +231,7 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {
         ESP.wdtFeed();
-        //delay(0);
+        delay(0);
         // Block everything, except reset and status reports, until user issues reset or power
         // cycles. Hard limits typically occur while unattended or not paying attention. Gives
         // the user and a GUI time to do what is needed before resetting, like killing the
@@ -305,7 +260,6 @@ void protocol_exec_rt_system()
     // NOTE: Once hold is initiated, the system immediately enters a suspend state to block all
     // main program processes until either reset or resumed. This ensures a hold completes safely.
     if (rt_exec & (EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP)) {
-
       // State check for allowable states for hold methods.
       if (!(sys.state & (STATE_ALARM | STATE_CHECK_MODE))) {
 
@@ -376,6 +330,7 @@ void protocol_exec_rt_system()
 
       system_clear_exec_state_flag((EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP));
     }
+
     // Execute a cycle start by starting the stepper interrupt to begin executing the blocks in queue.
     if (rt_exec & EXEC_CYCLE_START) {
       // Block if called at same time as the hold commands: feed hold, motion cancel, and safety door.
@@ -415,9 +370,7 @@ void protocol_exec_rt_system()
       }
       system_clear_exec_state_flag(EXEC_CYCLE_START);
     }
-    ESP.wdtFeed();
     if (rt_exec & EXEC_CYCLE_STOP) {
-
       // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
       // realtime command execution in the main program, ensuring that the planner re-plans safely.
       // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
@@ -451,7 +404,6 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag(EXEC_CYCLE_STOP);
     }
   }
-  ESP.wdtFeed();
   // Execute overrides.
   rt_exec = sys_rt_exec_motion_override; // Copy volatile sys_rt_exec_motion_override
   if (rt_exec) {
@@ -463,8 +415,8 @@ void protocol_exec_rt_system()
     if (rt_exec & EXEC_FEED_OVR_COARSE_MINUS) { new_f_override -= FEED_OVERRIDE_COARSE_INCREMENT; }
     if (rt_exec & EXEC_FEED_OVR_FINE_PLUS) { new_f_override += FEED_OVERRIDE_FINE_INCREMENT; }
     if (rt_exec & EXEC_FEED_OVR_FINE_MINUS) { new_f_override -= FEED_OVERRIDE_FINE_INCREMENT; }
-    new_f_override = min(new_f_override,MAX_FEED_RATE_OVERRIDE);
-    new_f_override = max(new_f_override,MIN_FEED_RATE_OVERRIDE);
+    new_f_override = min((int)new_f_override,MAX_FEED_RATE_OVERRIDE);
+    new_f_override = max((int)new_f_override,MIN_FEED_RATE_OVERRIDE);
 
     uint8_t new_r_override = sys.r_override;
     if (rt_exec & EXEC_RAPID_OVR_RESET) { new_r_override = DEFAULT_RAPID_OVERRIDE; }
@@ -491,12 +443,14 @@ void protocol_exec_rt_system()
     if (rt_exec & EXEC_SPINDLE_OVR_COARSE_MINUS) { last_s_override -= SPINDLE_OVERRIDE_COARSE_INCREMENT; }
     if (rt_exec & EXEC_SPINDLE_OVR_FINE_PLUS) { last_s_override += SPINDLE_OVERRIDE_FINE_INCREMENT; }
     if (rt_exec & EXEC_SPINDLE_OVR_FINE_MINUS) { last_s_override -= SPINDLE_OVERRIDE_FINE_INCREMENT; }
-    last_s_override = min(last_s_override,MAX_SPINDLE_SPEED_OVERRIDE);
-    last_s_override = max(last_s_override,MIN_SPINDLE_SPEED_OVERRIDE);
+    last_s_override = min((int)last_s_override,MAX_SPINDLE_SPEED_OVERRIDE);
+    last_s_override = max((int)last_s_override,MIN_SPINDLE_SPEED_OVERRIDE);
 
     if (last_s_override != sys.spindle_speed_ovr) {
-      bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);
       sys.spindle_speed_ovr = last_s_override;
+      // NOTE: Spindle speed overrides during HOLD state are taken care of by suspend function.
+      if (sys.state == STATE_IDLE) { spindle_set_state(gc_state.modal.spindle, gc_state.spindle_speed); }
+			else { bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM); }
       sys.report_ovr_counter = 0; // Set to report change immediately
     }
 
@@ -511,8 +465,9 @@ void protocol_exec_rt_system()
 
     // NOTE: Since coolant state always performs a planner sync whenever it changes, the current
     // run state can be determined by checking the parser state.
+    // NOTE: Coolant overrides only operate during IDLE, CYCLE, HOLD, and JOG states. Ignored otherwise.
     if (rt_exec & (EXEC_COOLANT_FLOOD_OVR_TOGGLE | EXEC_COOLANT_MIST_OVR_TOGGLE)) {
-      if ((sys.state == STATE_IDLE) || (sys.state & (STATE_CYCLE | STATE_HOLD))) {
+      if ((sys.state == STATE_IDLE) || (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_JOG))) {
         uint8_t coolant_state = gc_state.modal.coolant;
         #ifdef ENABLE_M7
           if (rt_exec & EXEC_COOLANT_MIST_OVR_TOGGLE) {
@@ -577,7 +532,7 @@ static void protocol_exec_rt_suspend()
       restore_condition = (gc_state.modal.spindle | gc_state.modal.coolant);
       restore_spindle_speed = gc_state.spindle_speed;
     } else {
-      restore_condition = block->condition;
+      restore_condition = (block->condition & PL_COND_SPINDLE_MASK) | coolant_get_state();
       restore_spindle_speed = block->spindle_speed;
     }
     #ifdef DISABLE_LASER_DURING_HOLD
@@ -587,23 +542,20 @@ static void protocol_exec_rt_suspend()
     #endif
   #else
     if (block == NULL) { restore_condition = (gc_state.modal.spindle | gc_state.modal.coolant); }
-    else { restore_condition = block->condition; }
+    else { restore_condition = (block->condition & PL_COND_SPINDLE_MASK) | coolant_get_state(); }
   #endif
 
   while (sys.suspend) {
-
+    delay(0);
     if (sys.abort) { return; }
 
     // Block until initial hold is complete and the machine has stopped motion.
     if (sys.suspend & SUSPEND_HOLD_COMPLETE) {
-
       // Parking manager. Handles de/re-energizing, switch state checks, and parking motions for
       // the safety door and sleep states.
       if (sys.state & (STATE_SAFETY_DOOR | STATE_SLEEP)) {
-
         // Handles retraction motions and de-energizing.
         if (bit_isfalse(sys.suspend,SUSPEND_RETRACT_COMPLETE)) {
-
           // Ensure any prior spindle stop override is disabled at start of safety door routine.
           sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED;
 
@@ -673,15 +625,13 @@ static void protocol_exec_rt_suspend()
           sys.suspend |= SUSPEND_RETRACT_COMPLETE;
 
         } else {
-
-
           if (sys.state == STATE_SLEEP) {
             report_feedback_message(MESSAGE_SLEEP_MODE);
             // Spindle and coolant should already be stopped, but do it again just to be sure.
             spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
             coolant_set_state(COOLANT_DISABLE); // De-energize
             st_go_idle(); // Disable steppers
-            while (!(sys.abort)) { protocol_exec_rt_system(); } // Do nothing until reset.
+            while (!(sys.abort)) { delay(0); protocol_exec_rt_system(); } // Do nothing until reset.
             return; // Abort received. Return to re-initialize.
           }
 
@@ -730,7 +680,7 @@ static void protocol_exec_rt_suspend()
               // Block if safety door re-opened during prior restore actions.
               if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
                 // NOTE: Laser mode will honor this delay. An exhaust system is often controlled by this pin.
-                coolant_set_state((restore_condition & (PL_COND_FLAG_COOLANT_FLOOD | PL_COND_FLAG_COOLANT_FLOOD)));
+                coolant_set_state((restore_condition & (PL_COND_FLAG_COOLANT_FLOOD | PL_COND_FLAG_COOLANT_MIST)));
                 delay_sec(SAFETY_DOOR_COOLANT_DELAY, DELAY_MODE_SYS_SUSPEND);
               }
             }
@@ -766,7 +716,6 @@ static void protocol_exec_rt_suspend()
 
 
       } else {
-
         // Feed hold manager. Controls spindle stop override states.
         // NOTE: Hold ensured as completed by condition check at the beginning of suspend routine.
         if (sys.spindle_stop_ovr) {

@@ -84,6 +84,11 @@
 #define MESSAGE_SPINDLE_RESTORE 10
 #define MESSAGE_SLEEP_MODE 11
 
+#define CLIENT_SERIAL     1
+#define CLIENT_WEBSOCKET  2
+#define CLIENT_ALL        0xFF
+#define CLIENT_COUNT      2 // total number of client types regardless if they are used
+
 // Prints system status messages.
 void report_status_message(uint8_t status_code);
 
@@ -106,7 +111,7 @@ void report_grbl_settings();
 void report_echo_line_received(char *line);
 
 // Prints realtime status report
-ICACHE_RAM_ATTR void report_realtime_status();
+void report_realtime_status();
 
 // Prints recorded probe position
 void report_probe_parameters();
@@ -115,7 +120,7 @@ void report_probe_parameters();
 void report_ngc_parameters();
 
 // Prints current g-code parser mode state
-ICACHE_RAM_ATTR void report_gcode_modes();
+void report_gcode_modes();
 
 // Prints startup line when requested and executed.
 void report_startup_line(uint8_t n, char *line);

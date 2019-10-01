@@ -46,6 +46,7 @@
 #define PL_COND_FLAG_COOLANT_FLOOD     bit(6)
 #define PL_COND_FLAG_COOLANT_MIST      bit(7)
 #define PL_COND_MOTION_MASK    (PL_COND_FLAG_RAPID_MOTION|PL_COND_FLAG_SYSTEM_MOTION|PL_COND_FLAG_NO_FEED_OVERRIDE)
+#define PL_COND_SPINDLE_MASK   (PL_COND_FLAG_SPINDLE_CW|PL_COND_FLAG_SPINDLE_CCW)
 #define PL_COND_ACCESSORY_MASK (PL_COND_FLAG_SPINDLE_CW|PL_COND_FLAG_SPINDLE_CCW|PL_COND_FLAG_COOLANT_FLOOD|PL_COND_FLAG_COOLANT_MIST)
 
 
@@ -107,22 +108,22 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data);
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.
-ICACHE_RAM_ATTR void plan_discard_current_block();
+void plan_discard_current_block();
 
 // Gets the planner block for the special system motion cases. (Parking/Homing)
-ICACHE_RAM_ATTR plan_block_t *plan_get_system_motion_block();
+plan_block_t *plan_get_system_motion_block();
 
 // Gets the current block. Returns NULL if buffer empty
-ICACHE_RAM_ATTR plan_block_t *plan_get_current_block();
+plan_block_t *plan_get_current_block();
 
 // Called periodically by step segment buffer. Mostly used internally by planner.
 uint8_t plan_next_block_index(uint8_t block_index);
 
 // Called by step segment buffer when computing executing block velocity profile.
-ICACHE_RAM_ATTR float plan_get_exec_block_exit_speed_sqr();
+float plan_get_exec_block_exit_speed_sqr();
 
 // Called by main program during planner calculations and step segment buffer during initialization.
-ICACHE_RAM_ATTR float plan_compute_profile_nominal_speed(plan_block_t *block);
+float plan_compute_profile_nominal_speed(plan_block_t *block);
 
 // Re-calculates buffered motions profile parameters upon a motion-based override change.
 void plan_update_velocity_profile_parameters();

@@ -45,7 +45,7 @@
 // Conversions
 #define MM_PER_INCH (25.40)
 #define INCH_PER_MM (0.0393701)
-#define TICKS_PER_MICROSECOND (F_CPU/1000000)
+#define TICKS_PER_MICROSECOND (F_STEPPER_TIMER/1000000)
 
 #define DELAY_MODE_DWELL       0
 #define DELAY_MODE_SYS_SUSPEND 1
@@ -73,7 +73,10 @@
 uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
 // Non-blocking delay function used for general operation and suspend features.
-ICACHE_RAM_ATTR void delay_sec(float seconds, uint8_t mode);
+void delay_sec(float seconds, uint8_t mode);
+
+// Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
+void delay_ms(uint16_t ms);
 
 // Computes hypotenuse, avoiding avr-gcc's bloated version and the extra error checking.
 float hypot_f(float x, float y);

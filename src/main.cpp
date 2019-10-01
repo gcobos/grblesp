@@ -20,13 +20,7 @@
 */
 
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
 #include "grbl.hpp"
-#include "credentials.hpp"
-
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
 
 // Declare system global variable structure
 system_t sys;
@@ -42,30 +36,13 @@ volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bit
 #endif
 
 void setup(void){
-    WiFi.mode(WIFI_STA);
-    IPAddress ip(192, 168, 8, 106);
-    IPAddress gateway(192, 168, 8, 1);
-    IPAddress subnet(255, 255, 255, 0);
-    IPAddress dns(192, 168, 8, 1);
-    WiFi.config(ip, dns, gateway, subnet);
-    WiFi.begin(ssid, password);
-
     // Initialize system upon power-up.
-    serial_init();   // Setup serial baud rate and interrupts
-    settings_init(); // Load Grbl settings from EEPROM
-    stepper_init();  // Configure stepper pins and interrupt timers
-    system_init();   // Configure pinout pins and pin-change interrupt
-
-    // Wait for connection
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        //Serial.print(".");
-    }
-    //Serial.println("");
-    //Serial.print("Connected to ");
-    //Serial.println(ssid);
-    //Serial.print("IP address: ");
-    //Serial.println(WiFi.localIP());
+    serial_init();    // Setup serial connection
+    eeprom_init();		// Initialize EEPROM
+    websocket_init(); // Setup websocket server
+    settings_init();  // Load Grbl settings from EEPROM
+    stepper_init();   // Configure stepper pins and interrupt timers
+    system_init();    // Configure pinout pins and pin-change interrupt
 
     memset(sys_position,0,sizeof(sys_position)); // Clear machine position.
     sei(); // Enable interrupts
@@ -88,7 +65,7 @@ void setup(void){
     #ifdef HOMING_INIT_LOCK
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
     #endif
-    pinMode(12, OUTPUT);
+    //pinMode(12, OUTPUT);
 }
 
 void loop(void)
@@ -111,8 +88,7 @@ void loop(void)
   sys_rt_exec_accessory_override = 0;
 
   // Reset Grbl primary systems.
-  eeprom_init();
-  serial_reset_read_buffer(); // Clear serial read buffer
+  serial_reset_read_buffer(CLIENT_ALL); // Clear serial read buffer
   gc_init(); // Set g-code parser to default state
   spindle_init();
   coolant_init();
@@ -127,9 +103,6 @@ void loop(void)
 
   // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
   report_init_message();
-
-  //Serial.print("IP address*: ");
-  //Serial.println(WiFi.localIP());
 
   // Start Grbl main loop. Processes program inputs and executes them.
   protocol_main_loop();

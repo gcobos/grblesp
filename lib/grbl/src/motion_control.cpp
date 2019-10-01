@@ -59,7 +59,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
   // Remain in this loop until there is room in the buffer.
   do {
     ESP.wdtFeed();
-    //delay(1);
+    delay(0);
     protocol_execute_realtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
     if ( plan_check_full_buffer() ) { protocol_auto_cycle_start(); } // Auto-cycle start when buffer is full.
@@ -160,7 +160,7 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
     uint8_t count = 0;
 
     for (i = 1; i<segments; i++) { // Increment (segments-1).
-
+      delay(0);
       if (count < N_ARC_CORRECTION) {
         // Apply vector rotation matrix. ~40 usec
         r_axisi = r_axis0*sin_T + r_axis1*cos_T;
@@ -288,6 +288,8 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
   system_set_exec_state_flag(EXEC_CYCLE_START);
   do {
+    ESP.wdtFeed();
+    delay(0);
     protocol_execute_realtime();
     if (sys.abort) { return(GC_PROBE_ABORT); } // Check for system abort
   } while (sys.state != STATE_IDLE);
@@ -336,6 +338,8 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
       st_prep_buffer();
       st_wake_up();
       do {
+        ESP.wdt_reset();
+        delay(0);
         protocol_exec_rt_system();
         if (sys.abort) { return; }
       } while (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION);
@@ -381,6 +385,7 @@ void mc_reset()
     // violated, by which, all bets are off.
     if ((sys.state & (STATE_CYCLE | STATE_HOMING | STATE_JOG)) ||
     		(sys.step_control & (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION))) {
+
       if (sys.state == STATE_HOMING) {
         if (!sys_rt_exec_alarm) {system_set_exec_alarm(EXEC_ALARM_HOMING_FAIL_RESET); }
       } else { system_set_exec_alarm(EXEC_ALARM_ABORT_CYCLE); }

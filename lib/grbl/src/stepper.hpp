@@ -27,33 +27,33 @@
 #endif
 
 // Initialize and setup the stepper motor subsystem
-ICACHE_RAM_ATTR void stepper_init();
+void stepper_init();
 
 // Enable steppers, but cycle does not start unless called by motion control or realtime command.
-ICACHE_RAM_ATTR void st_wake_up();
+void st_wake_up();
 
 // Immediately disables steppers
-ICACHE_RAM_ATTR void st_go_idle();
+void st_go_idle();
 
 // Generate the step and direction port invert masks.
-ICACHE_RAM_ATTR void st_generate_step_dir_invert_masks();
+void st_generate_step_dir_invert_masks();
 
 // Reset the stepper subsystem variables
-ICACHE_RAM_ATTR void st_reset();
+void st_reset();
 
 // Changes the run state of the step segment buffer to execute the special parking motion.
-ICACHE_RAM_ATTR void st_parking_setup_buffer();
+void st_parking_setup_buffer();
 
 // Restores the step segment buffer to the normal run state after a parking motion.
-ICACHE_RAM_ATTR void st_parking_restore_buffer();
+void st_parking_restore_buffer();
 
 // Reloads step segment buffer. Called continuously by realtime execution system.
-ICACHE_RAM_ATTR void st_prep_buffer();
+void st_prep_buffer();
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
-ICACHE_RAM_ATTR void st_update_plan_block_parameters();
+void st_update_plan_block_parameters();
 
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
-ICACHE_RAM_ATTR float st_get_realtime_rate();
+float st_get_realtime_rate();
 
 #endif

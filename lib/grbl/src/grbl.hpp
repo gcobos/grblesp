@@ -22,11 +22,10 @@
 #define grbl_h
 
 // Grbl versioning system
-#define GRBL_VERSION "1.1f"
-#define GRBL_VERSION_BUILD "20170801"
+#define GRBL_VERSION "1.1g"
+#define GRBL_VERSION_BUILD "20181112"
 
 #include <Arduino.h>
-
 // Define standard libraries used by Grbl.
 /*#include <avr/io.h>
 #include <avr/pgmspace.h>
@@ -39,6 +38,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "credentials.hpp"
 
 // Define the Grbl system include files. NOTE: Do not alter organization.
 #include "config.hpp"
@@ -60,6 +61,8 @@
 #include "protocol.hpp"
 #include "report.hpp"
 #include "serial.hpp"
+#include "websocket.hpp"
+#include "serial2socket.hpp"
 #include "spindle_control.hpp"
 #include "stepper.hpp"
 #include "jog.hpp"

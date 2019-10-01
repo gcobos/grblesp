@@ -23,7 +23,6 @@
 
 settings_t settings;
 
-
 // Method to store startup lines into EEPROM
 void settings_store_startup_line(uint8_t n, char *line)
 {
@@ -51,7 +50,6 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data)
     protocol_buffer_synchronize();
   #endif
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
-
   memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
 }
 

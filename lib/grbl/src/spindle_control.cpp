@@ -25,6 +25,7 @@
   static float pwm_gradient; // Precalulated value to speed up rpm to PWM conversions.
 #endif
 
+
 void spindle_init()
 {
   #ifdef VARIABLE_SPINDLE
@@ -40,7 +41,7 @@ void spindle_init()
       //SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
     #endif
 
-    //pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
+    pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
 
   #else
 
@@ -49,6 +50,7 @@ void spindle_init()
     //SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
 
   #endif
+
   spindle_stop();
 }
 
@@ -79,7 +81,6 @@ uint8_t spindle_get_state()
       else { return(SPINDLE_STATE_CW); }
     }
 	#endif
-
 	return(SPINDLE_STATE_DISABLE);
 }
 
@@ -222,7 +223,6 @@ void spindle_stop()
   void _spindle_set_state(uint8_t state)
 #endif
 {
-
   if (sys.abort) { return; } // Block during abort.
   if (state == SPINDLE_DISABLE) { // Halt or set spindle direction and rpm.
 
@@ -260,6 +260,7 @@ void spindle_stop()
     #endif
 
   }
+
   sys.report_ovr_counter = 0; // Set to report change immediately
 }
 

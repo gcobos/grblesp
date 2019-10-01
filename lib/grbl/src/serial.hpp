@@ -35,30 +35,21 @@
 
 #define SERIAL_NO_DATA 0xff
 
-
 void serial_init();
 
 // Writes one byte to the TX serial buffer. Called by main program.
 void serial_write(uint8_t data);
 
 // Fetches the first byte in the serial read buffer. Called by main program.
-uint8_t serial_read();
+uint8_t serial_read(uint8_t client);
 
 // Reset and empty data in read buffer. Used by e-stop and reset.
-void serial_reset_read_buffer();
+void serial_reset_read_buffer(uint8_t client);
 
 // Returns the number of bytes available in the RX serial buffer.
-uint8_t serial_get_rx_buffer_available();
+uint8_t serial_get_rx_buffer_available(uint8_t client);
 
-// Returns the number of bytes used in the RX serial buffer.
-// NOTE: Deprecated. Not used unless classic status reports are enabled in config.h.
-uint8_t serial_get_rx_buffer_count();
-
-// Returns the number of bytes used in the TX serial buffer.
-// NOTE: Not used except for debugging and ensuring no TX bottlenecks.
-uint8_t serial_get_tx_buffer_count();
-
-// Callas the RX interrupt manually
+// Serial rx "interrupt"
 void serial_poll_rx();
 
 #endif

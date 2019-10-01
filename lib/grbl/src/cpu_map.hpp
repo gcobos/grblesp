@@ -2,7 +2,7 @@
   cpu_map.hpp - Machine dependent code for the ESP8266 and family
   Part of Grbl
 
-  Copyright (c) 2016 Sungeun K. Jeon for Gnea Research LLC
+  Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,18 +18,13 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* The cpu_map.h files serve as a central pin mapping selection file for different
+   processor types or alternative pin layouts. This version of Grbl officially supports
+   only the Arduino Mega328p. */
+
+
 #ifndef cpu_map_h
 #define cpu_map_h
-
-#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 1) || (__GNUC__ > 4)
-#  define __INTR_ATTRS used, externally_visible
-#else /* GCC < 4.1 */
-#  define __INTR_ATTRS used
-#endif
-
-#define ISR(vector, ...)            \
-    void vector (void) __attribute__ ((signal,__INTR_ATTRS)) __VA_ARGS__; \
-    void vector (void)
 
 #define save_SREG() xt_rsil(2); // this routine will allow level 3 and above (returns an uint32_t)
 #define restore_SREG(state) xt_wsr_ps(state); sei(); // restore the state (uint32_t)
@@ -37,10 +32,10 @@
 volatile static union {
   uint32_t data;
   struct {
-    uint8_t LIMIT_PORT:8;     // All inputs
-    uint8_t MISC_PORT:8;      // Inputs and outputs
     uint8_t STEP_PORT:8;      // All outputs
     uint8_t DIRECTION_PORT:8; // All outputs
+    uint8_t MISC_PORT:8;      // Inputs and outputs
+    uint8_t LIMIT_PORT:8;     // All inputs
   };
 } regs;
 
@@ -84,12 +79,12 @@ volatile static union {
   #define LIMIT_PORT       regs.LIMIT_PORT
   #define X_LIMIT_BIT      0
   #define Y_LIMIT_BIT      1
-  #define Z_LIMIT_BIT	     2
-  #define A_LIMIT_BIT	     3
-  #define B_LIMIT_BIT	     4
-  #define C_LIMIT_BIT	     5
-  #define D_LIMIT_BIT	     6
-  #define E_LIMIT_BIT	     7
+  #define Z_LIMIT_BIT	   2
+  #define A_LIMIT_BIT	   3
+  #define B_LIMIT_BIT	   4
+  #define C_LIMIT_BIT	   5
+  #define D_LIMIT_BIT	   6
+  #define E_LIMIT_BIT	   7
   #define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
 
   //#define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
@@ -162,6 +157,10 @@ volatile static union {
   #define SPINDLE_PWM_DDR	  DDRB
   #define SPINDLE_PWM_PORT  PORTB
   #define SPINDLE_PWM_BIT	  3    // Uno Digital Pin 11
+
+  #define INPUT_GPIO_PIN    4
+
+  #define F_STEPPER_TIMER 20000000  // frequency of step pulse timer (SPI)
 
 #endif
 
