@@ -204,6 +204,8 @@ void system_set_exec_accessory_override_flag(uint8_t mask);
 void system_clear_exec_motion_overrides();
 void system_clear_exec_accessory_overrides();
 
-void pin_change_vect();
+void pin_control_vect();
+
+void system_set_on_all_inputs();
 
 #endif

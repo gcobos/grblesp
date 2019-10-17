@@ -32,12 +32,15 @@
 volatile static union {
   uint32_t data;
   struct {
-    uint8_t STEP_PORT:8;      // All outputs
-    uint8_t DIRECTION_PORT:8; // All outputs
-    uint8_t MISC_PORT:8;      // Inputs and outputs
-    uint8_t LIMIT_PORT:8;     // All inputs
+    uint8_t STEP_PORT_OFFSET:8;      // All outputs
+    uint8_t DIRECTION_PORT_OFFSET:8; // All outputs
+    uint8_t MISC_PORT_OFFSET:8;      // Inputs and outputs
+    uint8_t LIMIT_PORT_OFFSET:8;     // All inputs
   };
 } regs;
+
+// Used to modify SPI registers without altering Grbl's registers
+decltype(regs) regs_tmp;
 
 #ifdef CPU_MAP_ESP8266
 
@@ -46,7 +49,7 @@ volatile static union {
   #define SERIAL_UDRE   USART_UDRE_vect
 
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
-  #define STEP_PORT       regs.STEP_PORT
+  #define STEP_PORT       regs.STEP_PORT_OFFSET
   #define X_STEP_BIT      0
   #define Y_STEP_BIT      1
   #define Z_STEP_BIT      2
@@ -58,7 +61,7 @@ volatile static union {
   #define STEP_MASK       ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)|(1<<A_STEP_BIT)|(1<<B_STEP_BIT)|(1<<C_STEP_BIT)|(1<<D_STEP_BIT)|(1<<E_STEP_BIT)) // All step bits
 
   // Define step direction output pins. NOTE: All direction pins must be on the same port.
-  #define DIRECTION_PORT    regs.DIRECTION_PORT
+  #define DIRECTION_PORT    regs.DIRECTION_PORT_OFFSET
   #define X_DIRECTION_BIT      0
   #define Y_DIRECTION_BIT      1
   #define Z_DIRECTION_BIT      2
@@ -70,29 +73,29 @@ volatile static union {
   #define DIRECTION_MASK       ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)|(1<<A_DIRECTION_BIT)|(1<<B_DIRECTION_BIT)|(1<<C_DIRECTION_BIT)|(1<<D_DIRECTION_BIT)|(1<<E_DIRECTION_BIT)) // All direction bits
 
   // Define stepper driver enable/disable output pin.
-  //#define STEPPERS_DISABLE_PORT   regs.MISC_PORT
+  //#define STEPPERS_DISABLE_PORT   regs.MISC_PORT_OFFSET
   //#define STEPPERS_DISABLE_BIT    0
   //#define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
 
   // Define homing/hard limit switch input pins and limit interrupt vectors.
   // NOTE: All limit bit pins must be on the same port, but not on a port with other input pins (CONTROL).
-  #define LIMIT_PORT       regs.LIMIT_PORT
-  #define X_LIMIT_BIT      0
-  #define Y_LIMIT_BIT      1
-  #define Z_LIMIT_BIT	   2
-  #define A_LIMIT_BIT	   3
-  #define B_LIMIT_BIT	   4
-  #define C_LIMIT_BIT	   5
-  #define D_LIMIT_BIT	   6
-  #define E_LIMIT_BIT	   7
-  #define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
+  #define LIMIT_PORT      regs.LIMIT_PORT_OFFSET
+  #define X_LIMIT_BIT     0
+  #define Y_LIMIT_BIT     1
+  #define Z_LIMIT_BIT	    2
+  #define A_LIMIT_BIT	    3
+  #define B_LIMIT_BIT	    4
+  #define C_LIMIT_BIT	    5
+  #define D_LIMIT_BIT	    6
+  #define E_LIMIT_BIT	    7
+  #define LIMIT_MASK      ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
 
   //#define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
   //#define LIMIT_INT_vect   PCINT0_vect
   //#define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
 
   // Define spindle enable and spindle direction output pins.
-  #define SPINDLE_ENABLE_PORT  regs.MISC_PORT
+  #define SPINDLE_ENABLE_PORT  regs.MISC_PORT_OFFSET
   // Z Limit pin and spindle PWM/enable pin swapped to access hardware PWM on Pin 11.
   #ifdef VARIABLE_SPINDLE
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
@@ -109,14 +112,14 @@ volatile static union {
   #endif
 
   // Define flood and mist coolant enable output pins.
-  #define COOLANT_FLOOD_PORT  regs.MISC_PORT
+  #define COOLANT_FLOOD_PORT  regs.MISC_PORT_OFFSET
   #define COOLANT_FLOOD_BIT   5
-  #define COOLANT_MIST_PORT   regs.MISC_PORT
+  #define COOLANT_MIST_PORT   regs.MISC_PORT_OFFSET
   #define COOLANT_MIST_BIT    6
 
   // Define user-control controls (cycle start, reset, feed hold) input pins.
   // NOTE: All CONTROLs pins must be on the same port and not on a port with other input pins (limits).
-  #define CONTROL_PORT        regs.MISC_PORT
+  #define CONTROL_PORT        regs.MISC_PORT_OFFSET
   #define CONTROL_RESET_BIT         0
   #define CONTROL_FEED_HOLD_BIT     1
   #define CONTROL_CYCLE_START_BIT   2
@@ -129,7 +132,7 @@ volatile static union {
   #define CONTROL_INVERT_MASK   CONTROL_MASK // May be re-defined to only invert certain control pins.
 
   // Define probe switch input pin.
-  #define PROBE_PORT        regs.MISC_PORT
+  #define PROBE_PORT        regs.MISC_PORT_OFFSET
   #define PROBE_BIT               4
   #define PROBE_MASK      (1<<PROBE_BIT)
 
@@ -158,7 +161,7 @@ volatile static union {
   #define SPINDLE_PWM_PORT  PORTB
   #define SPINDLE_PWM_BIT	  3    // Uno Digital Pin 11
 
-  #define INPUT_GPIO_PIN    4
+  #define INPUT_GPIO_PIN    2    // GPIO_02
 
   #define F_STEPPER_TIMER 20000000  // frequency of step pulse timer (SPI)
 

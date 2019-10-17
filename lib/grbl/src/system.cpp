@@ -27,7 +27,11 @@ void system_init()
   SPI.setHwCs(true);
   SPI.setFrequency(F_STEPPER_TIMER);
 
-  attachInterrupt(INPUT_GPIO_PIN, pin_change_vect, CHANGE);
+  // Turn off all the inputs
+  system_set_on_all_inputs();
+
+  // Attach input to pin GPIO_02 (D4 in Wemos)
+  attachInterrupt(INPUT_GPIO_PIN, pin_control_vect, CHANGE);
   /*CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
   #ifdef DISABLE_CONTROL_PIN_PULL_UP
     CONTROL_PORT &= ~(CONTROL_MASK); // Normal low operation. Requires external pull-down.
@@ -46,7 +50,25 @@ void system_init()
 uint8_t system_control_get_state()
 {
   uint8_t control_state = 0;
-  // TODO: Use it to write and read the whole 32bit register
+  uint8_t pivot;
+  uint16_t testing_state = 0;
+
+  // Go through all control input pins, setting only one bit at a time
+  // and check if the physical pin is on for that combination
+  regs_tmp.data = regs.data;
+  testing_state = CONTROL_MASK;
+  for (pivot = 1; pivot; pivot <<= 1) {
+    testing_state = pivot & CONTROL_MASK;
+    if (testing_state) {
+      regs_tmp.MISC_PORT_OFFSET = testing_state;
+      SPI.write32(regs_tmp.data);
+      if (digitalRead(INPUT_GPIO_PIN)) {
+        //control_state |= pivot;   // Commented out until I get it connected
+      }
+    }
+  }
+  // Set all inputs back to 1
+  system_set_on_all_inputs();
 
   uint8_t pin = (CONTROL_PORT & CONTROL_MASK);
   #ifdef INVERT_CONTROL_PIN_MASK
@@ -69,7 +91,7 @@ uint8_t system_control_get_state()
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
 
-ICACHE_RAM_ATTR void pin_change_vect() {
+ICACHE_RAM_ATTR void pin_control_vect() {
   uint8_t pin = system_control_get_state();
   if (pin) {
     if (bit_istrue(pin,CONTROL_PIN_INDEX_RESET)) {
@@ -416,4 +438,11 @@ void system_clear_exec_accessory_overrides() {
   cli();
   sys_rt_exec_accessory_override = 0;
   restore_SREG(sreg);
+}
+
+void system_set_on_all_inputs() {
+  regs_tmp.data = regs.data;
+  regs_tmp.MISC_PORT_OFFSET = CONTROL_MASK;
+  regs_tmp.LIMIT_PORT_OFFSET = 0xff;
+  SPI.write(regs_tmp.data);
 }
