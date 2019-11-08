@@ -206,6 +206,6 @@ void system_clear_exec_accessory_overrides();
 
 void pin_control_vect();
 
-void system_set_on_all_inputs();
+void system_set_off_all_inputs();
 
 #endif

@@ -27,60 +27,32 @@ void system_init()
   SPI.setHwCs(true);
   SPI.setFrequency(F_STEPPER_TIMER);
 
-  // Turn off all the inputs
-  system_set_on_all_inputs();
+  // Turn off all control inputs
+  system_set_off_all_inputs();
 
-  // Attach input to pin GPIO_02 (D4 in Wemos)
-  attachInterrupt(INPUT_GPIO_PIN, pin_control_vect, CHANGE);
-  /*CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
-  #ifdef DISABLE_CONTROL_PIN_PULL_UP
-    CONTROL_PORT &= ~(CONTROL_MASK); // Normal low operation. Requires external pull-down.
-  #else
-    CONTROL_PORT |= CONTROL_MASK;   // Enable internal pull-up resistors. Normal high operation.
-  #endif
-  CONTROL_PCMSK |= CONTROL_MASK;  // Enable specific pins of the Pin Change Interrupt
-  PCICR |= (1 << CONTROL_INT);   // Enable Pin Change Interrupt
-  */
+  // Attach interrupt to input pin
+  pinMode(INPUT_GPIO_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(INPUT_GPIO_PIN), pin_control_vect, CHANGE);
 }
 
 
 // Returns control pin state as a uint8 bitfield. Each bit indicates the input pin state, where
 // triggered is 1 and not triggered is 0. Invert mask is applied. Bitfield organization is
 // defined by the CONTROL_PIN_INDEX in the header file.
-uint8_t system_control_get_state()
+ICACHE_RAM_ATTR uint8_t system_control_get_state()
 {
   uint8_t control_state = 0;
-  uint8_t pivot;
-  uint16_t testing_state = 0;
-
-  // Go through all control input pins, setting only one bit at a time
-  // and check if the physical pin is on for that combination
-  regs_tmp.data = regs.data;
-  testing_state = CONTROL_MASK;
-  for (pivot = 1; pivot; pivot <<= 1) {
-    testing_state = pivot & CONTROL_MASK;
-    if (testing_state) {
-      regs_tmp.MISC_PORT_OFFSET = testing_state;
-      SPI.write32(regs_tmp.data);
-      if (digitalRead(INPUT_GPIO_PIN)) {
-        //control_state |= pivot;   // Commented out until I get it connected
-      }
-    }
-  }
-  // Set all inputs back to 1
-  system_set_on_all_inputs();
-
   uint8_t pin = (CONTROL_PORT & CONTROL_MASK);
   #ifdef INVERT_CONTROL_PIN_MASK
     pin ^= INVERT_CONTROL_PIN_MASK;
   #endif
   if (pin) {
     #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
-      if (bit_isfalse(pin,(1<<CONTROL_SAFETY_DOOR_BIT))) { control_state |= CONTROL_PIN_INDEX_SAFETY_DOOR; }
+      if (bit_istrue(pin,(1<<CONTROL_SAFETY_DOOR_BIT))) { control_state |= CONTROL_PIN_INDEX_SAFETY_DOOR; }
     #endif
-    if (bit_isfalse(pin,(1<<CONTROL_RESET_BIT))) { control_state |= CONTROL_PIN_INDEX_RESET; }
-    if (bit_isfalse(pin,(1<<CONTROL_FEED_HOLD_BIT))) { control_state |= CONTROL_PIN_INDEX_FEED_HOLD; }
-    if (bit_isfalse(pin,(1<<CONTROL_CYCLE_START_BIT))) { control_state |= CONTROL_PIN_INDEX_CYCLE_START; }
+    if (bit_istrue(pin,(1<<CONTROL_RESET_BIT))) { control_state |= CONTROL_PIN_INDEX_RESET; }
+    if (bit_istrue(pin,(1<<CONTROL_FEED_HOLD_BIT))) { control_state |= CONTROL_PIN_INDEX_FEED_HOLD; }
+    if (bit_istrue(pin,(1<<CONTROL_CYCLE_START_BIT))) { control_state |= CONTROL_PIN_INDEX_CYCLE_START; }
   }
   return(control_state);
 }
@@ -90,8 +62,35 @@ uint8_t system_control_get_state()
 // only the realtime command execute variable to have the main program execute these when
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
-
 ICACHE_RAM_ATTR void pin_control_vect() {
+  uint8_t control_state = 0;
+  uint8_t pivot;
+
+  //detachInterrupt(digitalPinToInterrupt(INPUT_GPIO_PIN));
+  //GPC(digitalPinToInterrupt(INPUT_GPIO_PIN)) &= ~(0xF << GPCI);//INT mode disabled
+  GPIEC = (1 << digitalPinToInterrupt(INPUT_GPIO_PIN)); //Clear Interrupt for this pin
+  // Go through all control input pins, setting only one bit to 0 at a time
+  // and check if the physical pin is off for that combination
+  for (pivot = 1; pivot; pivot <<= 1) {
+    if (CONTROL_MASK & pivot) {
+      regs_tmp.data = regs.data;
+      regs_tmp.MISC_PORT_OFFSET |= CONTROL_MASK;
+      regs_tmp.MISC_PORT_OFFSET &= ~pivot;
+      SPI.write32(regs_tmp.data);
+      if (!GPIP(INPUT_GPIO_PIN)) {
+        control_state |= pivot;
+      }
+    }
+  }
+  // Set all inputs back to 0
+  system_set_off_all_inputs();
+
+  //GPC(digitalPinToInterrupt(INPUT_GPIO_PIN)) |= ((CHANGE & 0xF) << GPCI);//INT mode "mode"
+  attachInterrupt(digitalPinToInterrupt(INPUT_GPIO_PIN), pin_control_vect, CHANGE);
+
+  // Store in CONTROL_PORT all inputs that were active
+  CONTROL_PORT = control_state;
+
   uint8_t pin = system_control_get_state();
   if (pin) {
     if (bit_istrue(pin,CONTROL_PIN_INDEX_RESET)) {
@@ -440,9 +439,8 @@ void system_clear_exec_accessory_overrides() {
   restore_SREG(sreg);
 }
 
-void system_set_on_all_inputs() {
+ICACHE_RAM_ATTR void system_set_off_all_inputs() {
   regs_tmp.data = regs.data;
-  regs_tmp.MISC_PORT_OFFSET = CONTROL_MASK;
-  regs_tmp.LIMIT_PORT_OFFSET = 0xff;
+  regs_tmp.MISC_PORT_OFFSET &= ~CONTROL_MASK;
   SPI.write(regs_tmp.data);
 }

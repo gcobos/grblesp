@@ -161,7 +161,7 @@ decltype(regs) regs_tmp;
   #define SPINDLE_PWM_PORT  PORTB
   #define SPINDLE_PWM_BIT	  3    // Uno Digital Pin 11
 
-  #define INPUT_GPIO_PIN    2    // GPIO_02
+  #define INPUT_GPIO_PIN    D3    // GPIO_0 = D3
 
   #define F_STEPPER_TIMER 20000000  // frequency of step pulse timer (SPI)
 
