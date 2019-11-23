@@ -65,7 +65,6 @@ void setup(void){
     #ifdef HOMING_INIT_LOCK
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
     #endif
-    //pinMode(12, OUTPUT);
 }
 
 void loop(void)

@@ -79,6 +79,7 @@ decltype(regs) regs_tmp;
 
   // Define homing/hard limit switch input pins and limit interrupt vectors.
   // NOTE: All limit bit pins must be on the same port, but not on a port with other input pins (CONTROL).
+  #define LIMIT_PORT_INPUTS regs_tmp.LIMIT_PORT_OFFSET
   #define LIMIT_PORT      regs.LIMIT_PORT_OFFSET
   #define X_LIMIT_BIT     0
   #define Y_LIMIT_BIT     1
@@ -89,10 +90,6 @@ decltype(regs) regs_tmp;
   #define D_LIMIT_BIT	    6
   #define E_LIMIT_BIT	    7
   #define LIMIT_MASK      ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
-
-  //#define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
-  //#define LIMIT_INT_vect   PCINT0_vect
-  //#define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
 
   // Define spindle enable and spindle direction output pins.
   #define SPINDLE_ENABLE_PORT  regs.MISC_PORT_OFFSET
@@ -119,6 +116,7 @@ decltype(regs) regs_tmp;
 
   // Define user-control controls (cycle start, reset, feed hold) input pins.
   // NOTE: All CONTROLs pins must be on the same port and not on a port with other input pins (limits).
+  #define CONTROL_PORT_INPUTS regs_tmp.MISC_PORT_OFFSET
   #define CONTROL_PORT        regs.MISC_PORT_OFFSET
   #define CONTROL_RESET_BIT         0
   #define CONTROL_FEED_HOLD_BIT     1
@@ -161,9 +159,11 @@ decltype(regs) regs_tmp;
   #define SPINDLE_PWM_PORT  PORTB
   #define SPINDLE_PWM_BIT	  3    // Uno Digital Pin 11
 
-  #define INPUT_GPIO_PIN    D3    // GPIO_0 = D3
+  #define CONTROL_INPUT_GPIO_PIN    D3    // GPIO_0 = D3
 
-  #define F_STEPPER_TIMER 20000000  // frequency of step pulse timer (SPI)
+  #define LIMIT_INPUT_GPIO_PIN      D4    // GPIO_2 = D4
+
+  #define F_STEPPER_TIMER 40000000  // frequency of step pulse timer (SPI)
 
 #endif
 

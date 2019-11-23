@@ -20,6 +20,7 @@
 */
 
 #include "grbl.hpp"
+#include <SPI.h>
 
 // Homing axis search distance multiplier. Computed by this value times the cycle travel.
 #ifndef HOMING_AXIS_SEARCH_SCALAR
@@ -31,36 +32,19 @@
 
 void limits_init()
 {
-  /*
-  LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
+  // Turn off all limit inputs
+  LIMIT_PORT &= ~LIMIT_MASK;
+  SPI.write(regs.data);
 
-  #ifdef DISABLE_LIMIT_PIN_PULL_UP
-    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
-  #else
-    LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
-  #endif
-
-  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
-    LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
-    PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
-  } else {
-    limits_disable();
-  }
-  */
-  #ifdef ENABLE_SOFTWARE_DEBOUNCE
-    /*MCUSR &= ~(1<<WDRF);
-    WDTCSR |= (1<<WDCE) | (1<<WDE);
-    WDTCSR = (1<<WDP0); // Set time-out at ~32msec.
-    */
-  #endif
+  // Attach interrupt to limit input pin
+  pinMode(LIMIT_INPUT_GPIO_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(LIMIT_INPUT_GPIO_PIN), pin_limit_vect, CHANGE);
 }
-
 
 // Disables hard limits.
 void limits_disable()
 {
-  //LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt
-  //PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt
+  detachInterrupt(digitalPinToInterrupt(LIMIT_INPUT_GPIO_PIN));
 }
 
 
@@ -70,18 +54,18 @@ void limits_disable()
 uint8_t limits_get_state()
 {
   uint8_t limit_state = 0;
-  /*
-  uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
+
+  uint8_t pin = (LIMIT_PORT_INPUTS & LIMIT_MASK);
   #ifdef INVERT_LIMIT_PIN_MASK
     pin ^= INVERT_LIMIT_PIN_MASK;
   #endif
-  if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
   if (pin) {
     uint8_t idx;
     for (idx=0; idx<N_AXIS; idx++) {
       if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
     }
-  }*/
+  }
   return(limit_state);
 }
 
@@ -97,47 +81,55 @@ uint8_t limits_get_state()
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
-#ifndef ENABLE_SOFTWARE_DEBOUNCE
-  // void LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
-  void LIMIT_INT_vect(void)
-  {
-    // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
-    // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
-    // moves in the planner and serial buffers are all cleared and newly sent blocks will be
-    // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
-    // limit setting if their limits are constantly triggering after a reset and move their axes.
-    if (sys.state != STATE_ALARM) {
-      if (!(sys_rt_exec_alarm)) {
-        #ifdef HARD_LIMIT_FORCE_STATE_CHECK
-          // Check limit pin state.
-          if (limits_get_state()) {
-            mc_reset(); // Initiate system kill.
-            system_set_exec_alarm(EXEC_ALARM_HARD_LIMIT); // Indicate hard limit critical event
-          }
-        #else
-          mc_reset(); // Initiate system kill.
-          system_set_exec_alarm(EXEC_ALARM_HARD_LIMIT); // Indicate hard limit critical event
-        #endif
+
+static uint8_t limit_input_pivot;
+
+ICACHE_RAM_ATTR void pin_limit_vect() {
+  uint8_t limit_state = 0;
+
+  if (!limit_input_pivot && GPIP(LIMIT_INPUT_GPIO_PIN)) {
+
+    // Go through all limit input pins, setting only one bit to 0 at a time
+    // and check if the physical pin is off for that combination
+    for (limit_input_pivot = 1; limit_input_pivot; limit_input_pivot <<= 1) {
+      if (LIMIT_MASK & limit_input_pivot) {
+        LIMIT_PORT |= LIMIT_MASK;
+        LIMIT_PORT &= ~limit_input_pivot;
+        SPI.write32(regs.data);
+        if (!GPIP(LIMIT_INPUT_GPIO_PIN)) {
+          limit_state |= limit_input_pivot;
+        }
       }
     }
+    LIMIT_PORT_INPUTS = limit_state;
+
+    // Put all shift register inputs back to zero
+    LIMIT_PORT &= ~LIMIT_MASK;
+    SPI.write(regs.data);
+  } else {
+    LIMIT_PORT_INPUTS = 0;
   }
-#else // OPTIONAL: Software debounce limit pin routine.
-  // Upon limit pin change, enable watchdog timer to create a short delay.
-  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
-  ISR(WDT_vect) // Watchdog timer ISR
-  {
-    WDTCSR &= ~(1<<WDIE); // Disable watchdog timer.
-    if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state.
-      if (!(sys_rt_exec_alarm)) {
+
+  // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
+  // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
+  // moves in the planner and serial buffers are all cleared and newly sent blocks will be
+  // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
+  // limit setting if their limits are constantly triggering after a reset and move their axes.
+  if (sys.state != STATE_ALARM) {
+    if (!(sys_rt_exec_alarm)) {
+      #ifdef HARD_LIMIT_FORCE_STATE_CHECK
         // Check limit pin state.
         if (limits_get_state()) {
           mc_reset(); // Initiate system kill.
           system_set_exec_alarm(EXEC_ALARM_HARD_LIMIT); // Indicate hard limit critical event
         }
-      }
+      #else
+        mc_reset(); // Initiate system kill.
+        system_set_exec_alarm(EXEC_ALARM_HARD_LIMIT); // Indicate hard limit critical event
+      #endif
     }
   }
-#endif
+}
 
 // Homes the specified cycle axes, sets the machine position, and performs a pull-off motion after
 // completing. Homing is a special motion case, which involves rapid uncontrolled stops to locate
@@ -222,7 +214,6 @@ void limits_go_home(uint8_t cycle_mask)
         // Apply axislock to the step port pins active in this cycle.
         axislock |= step_pin[idx];
       }
-
     }
     homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
     sys.homing_axis_lock = axislock;
