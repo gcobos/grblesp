@@ -78,6 +78,7 @@ void protocol_main_loop()
     for (client = 1; client <= CLIENT_COUNT; client++)
     {
       while((c = serial_read(client)) != SERIAL_NO_DATA) {
+        ESP.wdtFeed();
         delay(0);
         if ((c == '\n') || (c == '\r')) { // End of line reached
           protocol_execute_realtime(); // Runtime command check point.
@@ -631,7 +632,10 @@ static void protocol_exec_rt_suspend()
             spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
             coolant_set_state(COOLANT_DISABLE); // De-energize
             st_go_idle(); // Disable steppers
-            while (!(sys.abort)) { delay(0); protocol_exec_rt_system(); } // Do nothing until reset.
+            while (!(sys.abort)) { 
+              delay(0); 
+              protocol_exec_rt_system(); 
+              } // Do nothing until reset.
             return; // Abort received. Return to re-initialize.
           }
 

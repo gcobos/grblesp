@@ -395,6 +395,7 @@ void system_clear_exec_state_flag(uint8_t mask) {
   cli();
   sys_rt_exec_state &= ~(mask);
   restore_SREG(sreg);
+  sei();
 }
 
 void system_set_exec_alarm(uint8_t code) {
@@ -409,6 +410,7 @@ void system_clear_exec_alarm() {
   cli();
   sys_rt_exec_alarm = 0;
   restore_SREG(sreg);
+    sei();
 }
 
 void system_set_exec_motion_override_flag(uint8_t mask) {
@@ -430,6 +432,7 @@ void system_clear_exec_motion_overrides() {
   cli();
   sys_rt_exec_motion_override = 0;
   restore_SREG(sreg);
+    sei();
 }
 
 void system_clear_exec_accessory_overrides() {
@@ -437,4 +440,5 @@ void system_clear_exec_accessory_overrides() {
   cli();
   sys_rt_exec_accessory_override = 0;
   restore_SREG(sreg);
+    sei();
 }
