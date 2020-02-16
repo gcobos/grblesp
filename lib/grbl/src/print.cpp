@@ -22,20 +22,20 @@
 #include "grbl.hpp"
 
 
-void printString(const char *s)
+/*void printString(const char *s)
 {
   while (*s)
     serial_write(*s++);
-}
+}*/
 
 
 // Print a string stored in PGM-memory
-void printPgmString(const char *s)
+/*void printPgmString(const char *s)
 {
   char c;
   while ((c = pgm_read_byte_near(s++)))
     serial_write(c);
-}
+}*/
 
 
 // void printIntegerInBase(unsigned long n, unsigned long base)

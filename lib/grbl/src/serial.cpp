@@ -66,9 +66,11 @@ void serial_poll_rx()
       data = Serial.read();
     }
     #ifdef ENABLE_SERIAL2SOCKET
-      else if (Serial2Socket.available()) {
-        client = CLIENT_WEBSOCKET;
-        data = Serial2Socket.read();
+      else {
+        if (Serial2Socket.available()) {
+          client = CLIENT_WEBSOCKET;
+          data = Serial2Socket.read();
+        }
       }
     #endif
 
@@ -78,7 +80,7 @@ void serial_poll_rx()
     // not passed into the main buffer, but these set system state flag bits for realtime execution.
     switch (data) {
     case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
-    case CMD_STATUS_REPORT: system_set_exec_state_flag(EXEC_STATUS_REPORT); break; // Set as true
+    case CMD_STATUS_REPORT: report_realtime_status(client); break;
     case CMD_CYCLE_START:   system_set_exec_state_flag(EXEC_CYCLE_START); break; // Set as true
     case CMD_FEED_HOLD:     system_set_exec_state_flag(EXEC_FEED_HOLD); break; // Set as true
     default :

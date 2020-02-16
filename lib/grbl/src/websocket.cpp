@@ -7,23 +7,24 @@
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <ESP8266mDNS.h>
-#include <ArduinoOTA.h>
 
 AsyncWebServer webSocketServer(WEBSERVER_PORT);
 AsyncWebSocket ws("/ws");
-AsyncEventSource events("/events");
+//AsyncEventSource events("/events");
 
 void websocket_init()
 {
-  WiFi.mode(WIFI_STA);
   WiFi.hostname(WIFI_HOSTNAME);
-  WiFi.softAP(WIFI_HOSTNAME);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+  Serial.println(WiFi.localIP());
   MDNS.addService("http", "tcp", WEBSERVER_PORT);
   ws.onEvent(onWsEvent);
   webSocketServer.addHandler(&ws);
   webSocketServer.begin();
-  Serial2Socket.attachWS(&webSocketServer);
+  Serial2Socket.attachWS(&ws);
 }
 
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
@@ -40,7 +41,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   } else if(type == WS_EVT_DATA){
     AwsFrameInfo * info = (AwsFrameInfo*)arg;
     String msg = "";
-    if(info->final && info->index == 0 && info->len == len){
+    if (info->final && info->index == 0 && info->len == len){
       //the whole message is in a single frame and we got all of it's data
       for(size_t i=0; i < info->len; i++) {
         msg += (char)data[i];

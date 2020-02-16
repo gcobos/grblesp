@@ -171,7 +171,7 @@ uint8_t system_control_get_state();
 uint8_t system_check_safety_door_ajar();
 
 // Executes an internal system command, defined as a string starting with a '$'
-uint8_t system_execute_line(char *line);
+uint8_t system_execute_line(char *line, uint8_t client);
 
 // Execute the startup script lines stored in EEPROM upon initialization
 void system_execute_startup(char *line);

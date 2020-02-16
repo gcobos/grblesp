@@ -127,11 +127,11 @@ void system_execute_startup(char *line)
     delay(0);
     if (!(settings_read_startup_line(n, line))) {
       line[0] = 0;
-      report_execute_startup_message(line,STATUS_SETTING_READ_FAIL);
+      report_execute_startup_message(line,STATUS_SETTING_READ_FAIL, CLIENT_SERIAL);
     } else {
       if (line[0] != 0) {
-        uint8_t status_code = gc_execute_line(line);
-        report_execute_startup_message(line,status_code);
+        uint8_t status_code = gc_execute_line(line, CLIENT_SERIAL);
+        report_execute_startup_message(line,status_code, CLIENT_SERIAL);
       }
     }
   }
@@ -146,30 +146,30 @@ void system_execute_startup(char *line)
 // the lines that are processed afterward, not necessarily real-time during a cycle,
 // since there are motions already stored in the buffer. However, this 'lag' should not
 // be an issue, since these commands are not typically used during a cycle.
-uint8_t system_execute_line(char *line)
+uint8_t system_execute_line(char *line, uint8_t client)
 {
   uint8_t char_counter = 1;
   uint8_t helper_var = 0; // Helper variable
   float parameter, value;
 
   switch( line[char_counter] ) {
-    case 0 : report_grbl_help(); break;
+    case 0 : report_grbl_help(client); break;
     case 'J' : // Jogging
       // Execute only if in IDLE or JOG states.
       if (sys.state != STATE_IDLE && sys.state != STATE_JOG) { return(STATUS_IDLE_ERROR); }
       if(line[2] != '=') { return(STATUS_INVALID_STATEMENT); }
-      return(gc_execute_line(line)); // NOTE: $J= is ignored inside g-code parser and used to detect jog motions.
+      return(gc_execute_line(line, client)); // NOTE: $J= is ignored inside g-code parser and used to detect jog motions.
       break;
     case '$': case 'G': case 'C': case 'X':
       if ( line[2] != 0 ) { return(STATUS_INVALID_STATEMENT); }
       switch( line[1] ) {
         case '$' : // Prints Grbl settings
           if ( sys.state & (STATE_CYCLE | STATE_HOLD) ) { return(STATUS_IDLE_ERROR); } // Block during cycle. Takes too long to print.
-          else { report_grbl_settings(); }
+          else { report_grbl_settings(client); }
           break;
         case 'G' : // Prints gcode parser state
           // TODO: Move this to realtime commands for GUIs to request this data during suspend-state.
-          report_gcode_modes();
+          report_gcode_modes(client);
           break;
         case 'C' : // Set check g-code mode [IDLE/CHECK]
           // Perform reset when toggling off. Check g-code mode should only work if Grbl
@@ -201,7 +201,7 @@ uint8_t system_execute_line(char *line)
       switch( line[1] ) {
         case '#' : // Print Grbl NGC parameters
           if ( line[2] != 0 ) { return(STATUS_INVALID_STATEMENT); }
-          else { report_ngc_parameters(); }
+          else { report_ngc_parameters(client); }
           break;
         case 'H' : // Perform homing cycle [IDLE/ALARM]
           if (bit_isfalse(settings.flags,BITFLAG_HOMING_ENABLE)) {return(STATUS_SETTING_DISABLED); }
@@ -232,7 +232,7 @@ uint8_t system_execute_line(char *line)
         case 'I' : // Print or store build info. [IDLE/ALARM]
           if ( line[++char_counter] == 0 ) {
             settings_read_build_info(line);
-            report_build_info(line);
+            report_build_info(line, client);
           #ifdef ENABLE_BUILD_INFO_WRITE_COMMAND
             } else { // Store startup line [IDLE/ALARM]
               if(line[char_counter++] != '=') { return(STATUS_INVALID_STATEMENT); }
@@ -267,9 +267,9 @@ uint8_t system_execute_line(char *line)
             for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
               delay(0);
               if (!(settings_read_startup_line(helper_var, line))) {
-                report_status_message(STATUS_SETTING_READ_FAIL);
+                report_status_message(STATUS_SETTING_READ_FAIL, CLIENT_ALL);
               } else {
-                report_startup_line(helper_var,line);
+                report_startup_line(helper_var,line, CLIENT_ALL);
               }
             }
             break;
@@ -289,7 +289,7 @@ uint8_t system_execute_line(char *line)
               line[char_counter-helper_var] = line[char_counter];
             } while (line[char_counter++] != 0);
             // Execute gcode block to ensure block is valid.
-            helper_var = gc_execute_line(line); // Set helper_var to returned status code.
+            helper_var = gc_execute_line(line, client); // Set helper_var to returned status code.
             if (helper_var) { return(helper_var); }
             else {
               helper_var = trunc(parameter); // Set helper_var to int value of parameter
@@ -384,61 +384,61 @@ uint8_t system_check_travel_limits(float *target)
 
 // Special handlers for setting and clearing Grbl's real-time execution flags.
 void system_set_exec_state_flag(uint8_t mask) {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_state |= (mask);
-  restore_SREG(sreg);
+  //restore_SREG(sreg);
 }
 
 void system_clear_exec_state_flag(uint8_t mask) {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_state &= ~(mask);
-  restore_SREG(sreg);
-  sei();
+  //restore_SREG(sreg);
+  //sei();
 }
 
 void system_set_exec_alarm(uint8_t code) {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_alarm = code;
-  restore_SREG(sreg);
+  //restore_SREG(sreg);
 }
 
 void system_clear_exec_alarm() {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_alarm = 0;
-  restore_SREG(sreg);
-    sei();
+  //restore_SREG(sreg);
+  //  sei();
 }
 
 void system_set_exec_motion_override_flag(uint8_t mask) {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_motion_override |= (mask);
-  restore_SREG(sreg);
+  //restore_SREG(sreg);
 }
 
 void system_set_exec_accessory_override_flag(uint8_t mask) {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_accessory_override |= (mask);
-  restore_SREG(sreg);
+  //restore_SREG(sreg);
 }
 
 void system_clear_exec_motion_overrides() {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_motion_override = 0;
-  restore_SREG(sreg);
-    sei();
+  //restore_SREG(sreg);
+  //  sei();
 }
 
 void system_clear_exec_accessory_overrides() {
-  uint8_t sreg = save_SREG();
-  cli();
+  //uint8_t sreg = save_SREG();
+  //cli();
   sys_rt_exec_accessory_override = 0;
-  restore_SREG(sreg);
-    sei();
+  //restore_SREG(sreg);
+  //  sei();
 }

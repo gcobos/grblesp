@@ -63,6 +63,7 @@ bool Serial_2_Socket::attachWS(void * web_socket){
 
 bool Serial_2_Socket::detachWS(){
   _web_socket = NULL;
+  return true;
 }
 
 Serial_2_Socket::operator bool() const
@@ -96,7 +97,7 @@ size_t Serial_2_Socket::write(const uint8_t *buffer, size_t size)
     _TXbuffer[_TXbufferSize] = buffer[i];
     _TXbufferSize++;
   }
-  Serial.printf("[SOCKET]buffer size %d",_TXbufferSize);
+  //Serial.printf("[SOCKET]buffer size %d",_TXbufferSize);
   handle_flush();
   return size;
 }
@@ -135,7 +136,7 @@ int Serial_2_Socket::read(void){
 void Serial_2_Socket::handle_flush() {
   if (_TXbufferSize > 0) {
     if ((_TXbufferSize>=TXBUFFERSIZE) || ((millis()- _lastflush) > FLUSHTIMEOUT)) {
-      Serial.printf("[SOCKET]need flush, buffer size %d",_TXbufferSize);
+      //Serial.printf("[SOCKET]need flush, buffer size %d\n",_TXbufferSize);
       flush();
     }
   }
@@ -143,12 +144,12 @@ void Serial_2_Socket::handle_flush() {
 
 void Serial_2_Socket::flush(void){
   if (_TXbufferSize > 0){
-    //if (((AsyncWebSocket *)_web_socket)->count() > 0) {
-    //  Serial.printf("[SOCKET]flush data, buffer size %d",_TXbufferSize);
-    //((AsyncWebSocket *)_web_socket)->broadcastBIN(_TXbuffer, _TXbufferSize);
-    //} else {
-    //  Serial.printf("[SOCKET]Cannot flush, buffer size %d",_TXbufferSize);
-    //}
+    if (((AsyncWebSocket *)_web_socket)->count() > 0) {
+      //Serial.printf("[SOCKET]flush data, buffer size %d",_TXbufferSize);
+      ((AsyncWebSocket *)_web_socket)->textAll(_TXbuffer,_TXbufferSize);
+    } else {
+      //Serial.printf("[SOCKET]Cannot flush, buffer size %d",_TXbufferSize);
+    }
     //refresh timout
     _lastflush = millis();
     //reset buffer

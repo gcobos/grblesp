@@ -101,7 +101,7 @@ void loop(void)
   gc_sync_position();
 
   // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
-  report_init_message();
+  report_init_message(CLIENT_ALL);
 
   // Start Grbl main loop. Processes program inputs and executes them.
   protocol_main_loop();
