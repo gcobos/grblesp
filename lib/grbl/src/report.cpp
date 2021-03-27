@@ -32,11 +32,19 @@
 // this is a generic send function that everything should use, so interfaces could be added (Bluetooth, etc)
 void grbl_send(uint8_t client, const char *text)
 {
-	if ( client == CLIENT_WEBSOCKET || client == CLIENT_ALL )
-		Serial2Socket.write((const uint8_t*)text, strlen(text));
-
-	if ( client == CLIENT_SERIAL || client == CLIENT_ALL )
-		Serial.print(text);
+#ifdef ENABLE_WEBSOCKET
+  if ( client == CLIENT_WEBSOCKET || client == CLIENT_ALL ) {
+    Serial2Socket.write((const uint8_t*)text, strlen(text));
+  }
+#endif
+#ifdef ENABLE_TELNET
+  if ( client == CLIENT_TELNET || client == CLIENT_ALL ) {
+    telnetServer.write((const uint8_t*)text, strlen(text));
+  }
+#endif
+  if ( client == CLIENT_SERIAL || client == CLIENT_ALL ) {
+    Serial.print(text);
+  }
 }
 
 // Taken from Grbl_Esp32
@@ -481,9 +489,6 @@ void report_build_info(char *line, uint8 client)
 
   strcat(build_info,"]\r\n");
   grbl_send(client, build_info); // ok to send to all
-  #if defined (ENABLE_WIFI)
-    grbl_send(client, (char *)wifi_config.info());
-  #endif
 
   #ifdef LIMITS_TWO_SWITCHES_ON_AXES
     strcat(build_info,"L");
@@ -577,7 +582,12 @@ void report_realtime_status(uint8_t client)
   // Returns planner and serial read buffer states.
   #ifdef REPORT_FIELD_BUFFER_STATE
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_BUFFER_STATE)) {
-    int bufsize = serial_get_rx_buffer_available(client);
+    int bufsize;
+    if (client == CLIENT_TELNET) {
+      bufsize = telnetServer.get_rx_buffer_available();
+    } else {
+      bufsize = serial_get_rx_buffer_available(client);
+    }
     sprintf(temp, "|Bf:%d,%d", plan_get_block_buffer_available(), bufsize);
     strcat(status, temp);
   }

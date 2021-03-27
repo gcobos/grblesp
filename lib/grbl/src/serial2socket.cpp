@@ -22,6 +22,8 @@
 
 #include "grbl.hpp"
 
+#ifdef ENABLE_WEBSOCKET
+
 Serial_2_Socket Serial2Socket;
 
 Serial_2_Socket::Serial_2_Socket(){
@@ -156,3 +158,5 @@ void Serial_2_Socket::flush(void){
     _TXbufferSize = 0;
   }
 }
+
+#endif

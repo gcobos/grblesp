@@ -36,35 +36,38 @@ volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bit
 #endif
 
 void setup(void){
-    // Initialize system upon power-up.
-    serial_init();    // Setup serial connection
-    eeprom_init();		// Initialize EEPROM
-    websocket_init(); // Setup websocket server
-    settings_init();  // Load Grbl settings from EEPROM
-    stepper_init();   // Configure stepper pins and interrupt timers
-    system_init();    // Configure pinout pins and pin-change interrupt
+  // Initialize system upon power-up.
+  serial_init();    // Setup serial connection
+  eeprom_init();		// Initialize EEPROM
+  settings_init();  // Load Grbl settings from EEPROM
+  stepper_init();   // Configure stepper pins and interrupt timers
+  system_init();    // Configure pinout pins and pin-change interrupt
 
-    memset(sys_position,0,sizeof(sys_position)); // Clear machine position.
-    sei(); // Enable interrupts
+  memset(sys_position,0,sizeof(sys_position)); // Clear machine position.
+  sei(); // Enable interrupts
 
-    // Initialize system state.
-    #ifdef FORCE_INITIALIZATION_ALARM
-        // Force Grbl into an ALARM state upon a power-cycle or hard reset.
-        sys.state = STATE_ALARM;
-    #else
-        sys.state = STATE_IDLE;
-    #endif
+  // Initialize system state.
+  #ifdef FORCE_INITIALIZATION_ALARM
+    // Force Grbl into an ALARM state upon a power-cycle or hard reset.
+    sys.state = STATE_ALARM;
+  #else
+    sys.state = STATE_IDLE;
+  #endif
 
-    // Check for power-up and set system alarm if homing is enabled to force homing cycle
-    // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
-    // startup scripts, but allows access to settings and internal commands. Only a homing
-    // cycle '$H' or kill alarm locks '$X' will disable the alarm.
-    // NOTE: The startup script will run after successful completion of the homing cycle, but
-    // not after disabling the alarm locks. Prevents motion startup blocks from crashing into
-    // things uncontrollably. Very bad.
-    #ifdef HOMING_INIT_LOCK
-        if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
-    #endif
+  // Check for power-up and set system alarm if homing is enabled to force homing cycle
+  // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
+  // startup scripts, but allows access to settings and internal commands. Only a homing
+  // cycle '$H' or kill alarm locks '$X' will disable the alarm.
+  // NOTE: The startup script will run after successful completion of the homing cycle, but
+  // not after disabling the alarm locks. Prevents motion startup blocks from crashing into
+  // things uncontrollably. Very bad.
+  #ifdef HOMING_INIT_LOCK
+    if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
+  #endif
+
+  #ifdef ENABLE_WIFI
+    wifi_init();
+  #endif
 }
 
 void loop(void)

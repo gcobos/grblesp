@@ -86,8 +86,9 @@
 
 #define CLIENT_SERIAL     1
 #define CLIENT_WEBSOCKET  2
+#define CLIENT_TELNET     3
 #define CLIENT_ALL        0xFF
-#define CLIENT_COUNT      2 // total number of client types regardless if they are used
+#define CLIENT_COUNT      3 // total number of client types regardless if they are used
 
 #define MSG_LEVEL_NONE		0 // set GRBL_MSG_LEVEL in config.h to the level you want to see
 #define MSG_LEVEL_ERROR		1

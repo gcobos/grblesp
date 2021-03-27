@@ -8,7 +8,7 @@
 
 #include <ESPAsyncWebServer.h>
 
-#define WEBSERVER_PORT 80
+#define WEBSOCKET_SERVER_PORT 80
 #define WEBSOCKET_NO_DATA 0xff
 
 void websocket_init();

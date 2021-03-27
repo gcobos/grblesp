@@ -3,24 +3,16 @@
   of a serial connection
 */
 #include "grbl.hpp"
-
-#include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
-#include <ESP8266mDNS.h>
 
-AsyncWebServer webSocketServer(WEBSERVER_PORT);
+#ifdef ENABLE_WEBSOCKET
+
+AsyncWebServer webSocketServer(WEBSOCKET_SERVER_PORT);
 AsyncWebSocket ws("/ws");
 //AsyncEventSource events("/events");
 
 void websocket_init()
 {
-  WiFi.hostname(WIFI_HOSTNAME);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-  Serial.println(WiFi.localIP());
-  MDNS.addService("http", "tcp", WEBSERVER_PORT);
   ws.onEvent(onWsEvent);
   webSocketServer.addHandler(&ws);
   webSocketServer.begin();
@@ -51,3 +43,5 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
     }
   }
 }
+
+#endif

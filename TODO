@@ -1,0 +1,4 @@
+
+- Input system
+- Change AsyncWebSockets to WebSockets maybe?
+- Connecting bCNC through sockets!

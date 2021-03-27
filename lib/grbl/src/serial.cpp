@@ -53,25 +53,32 @@ void serial_poll_rx()
 {
   uint8_t data = 0;
   uint8_t next_head;
-  uint8_t client;  // who sent the data
+  uint8_t client = CLIENT_SERIAL;  // who sent the data
   uint8_t client_idx = 0;  // index of data buffer
 
   while (Serial.available()
-  #ifdef ENABLE_SERIAL2SOCKET
+  #if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
     || Serial2Socket.available()
+  #endif
+  #if (defined ENABLE_WIFI) && (defined ENABLE_TELNET)
+    || telnetServer.available()
   #endif
     ) {
     if (Serial.available()) {
       client = CLIENT_SERIAL;
       data = Serial.read();
     }
-    #ifdef ENABLE_SERIAL2SOCKET
-      else {
-        if (Serial2Socket.available()) {
-          client = CLIENT_WEBSOCKET;
-          data = Serial2Socket.read();
-        }
-      }
+    #if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
+    else if (Serial2Socket.available()) {
+      client = CLIENT_WEBSOCKET;
+      data = Serial2Socket.read();
+    }
+    #endif
+    #if (defined ENABLE_WIFI) && (defined ENABLE_TELNET)
+    else if (telnetServer.available()) {
+      client = CLIENT_TELNET;
+      data = telnetServer.read();
+    }
     #endif
 
     client_idx = client - 1;  // for zero based array
@@ -128,10 +135,13 @@ void serial_poll_rx()
         // exit mutex
       }
     }
-#if defined(ENABLE_SERIAL2SOCKET)
-    Serial2Socket.handle_flush();
-#endif
   }
+#ifdef ENABLE_WIFI
+  wifi_handle();
+#endif
+#if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
+  Serial2Socket.handle_flush();
+#endif
 }
 
 void serial_reset_read_buffer(uint8_t client)
