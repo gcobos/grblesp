@@ -28,7 +28,7 @@ The board should use 4 x 8-bit shift registers. They are arranged this way:
   #define PROBE_BIT                 4  
   #define COOLANT_FLOOD_BIT         5  
   #define COOLANT_MIST_BIT          6  
-  #define SPINDLE_ENABLE_BIT        7  
+  #define STEPPERS_DISABLE_BIT      7  
   
 - 8 bits for limits. All inputs
 
@@ -70,7 +70,7 @@ Probe, spindle, and probably other features, are not yet supported
 | 5 | PROBE | (input) |
 | 6 | COOLANT/FLOOD  |(output) |
 | 7 | COOLANT/MIST  |(output) |
-| 8 | SPINDLE  |(output) |
+| 8 | STEPPERS_DISABLE |(output) |
 
 #### J1 
 |Pin|Function|Type|

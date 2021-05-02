@@ -275,7 +275,7 @@ void protocol_exec_rt_system()
           }
         }
         // If IDLE, Grbl is not in motion. Simply indicate suspend state and hold is complete.
-        if (sys.state == STATE_IDLE) { sys.suspend = SUSPEND_HOLD_COMPLETE; }
+        if (sys.state == STATE_IDLE) { Serial.println("Suspend0"); sys.suspend = SUSPEND_HOLD_COMPLETE; }
 
         // Execute and flag a motion cancel with deceleration and return to idle. Used primarily by probing cycle
         // to halt and cancel the remainder of the motion.
@@ -340,7 +340,7 @@ void protocol_exec_rt_system()
         // Resume door state when parking motion has retracted and door has been closed.
         if ((sys.state == STATE_SAFETY_DOOR) && !(sys.suspend & SUSPEND_SAFETY_DOOR_AJAR)) {
           if (sys.suspend & SUSPEND_RESTORE_COMPLETE) {
-            sys.state = STATE_IDLE; // Set to IDLE to immediately resume the cycle.
+            sys.state = STATE_IDLE;  // Set to IDLE to immediately resume the cycle.
           } else if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
             // Flag to re-energize powered components and restore original position, if disabled by SAFETY_DOOR.
             // NOTE: For a safety door to resume, the switch must be closed, as indicated by HOLD state, and
@@ -358,12 +358,12 @@ void protocol_exec_rt_system()
             // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.
             sys.step_control = STEP_CONTROL_NORMAL_OP; // Restore step control to normal operation
             if (plan_get_current_block() && bit_isfalse(sys.suspend,SUSPEND_MOTION_CANCEL)) {
-              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+              Serial.println("Suspend1"); sys.suspend = SUSPEND_DISABLE; // Break suspend state.
               sys.state = STATE_CYCLE;
               st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
               st_wake_up();
             } else { // Otherwise, do nothing. Set and resume IDLE state.
-              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+              Serial.println("Suspend2"); sys.suspend = SUSPEND_DISABLE; // Break suspend state.
               sys.state = STATE_IDLE;
             }
           }
@@ -372,6 +372,7 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag(EXEC_CYCLE_START);
     }
     if (rt_exec & EXEC_CYCLE_STOP) {
+      Serial.println("Pulsado stop?");
       // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
       // realtime command execution in the main program, ensuring that the planner re-plans safely.
       // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
@@ -398,7 +399,7 @@ void protocol_exec_rt_system()
           sys.suspend |= SUSPEND_HOLD_COMPLETE;
           sys.state = STATE_SAFETY_DOOR;
         } else {
-          sys.suspend = SUSPEND_DISABLE;
+          Serial.println("Suspend3"); sys.suspend = SUSPEND_DISABLE;
           sys.state = STATE_IDLE;
         }
       }

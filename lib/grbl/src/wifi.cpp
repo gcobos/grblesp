@@ -53,7 +53,4 @@ void wifi_handle()
 #ifdef ENABLE_HTTP
   web_server.handle();
 #endif
-#ifdef ENABLE_TELNET
-  telnetServer.handle();
-#endif
 }

@@ -220,7 +220,7 @@ uint8_t system_execute_line(char *line, uint8_t client)
           #endif
           } else { return(STATUS_INVALID_STATEMENT); }
           if (!sys.abort) {  // Execute startup scripts after successful homing.
-            sys.state = STATE_IDLE; // Set to IDLE when complete.
+            sys.state = STATE_IDLE;  // Set to IDLE when complete.
             st_go_idle(); // Set steppers to the settings idle state before returning.
             if (line[2] == 0) { system_execute_startup(line); }
           }
