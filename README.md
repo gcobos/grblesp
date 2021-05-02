@@ -21,13 +21,14 @@ The board should use 4 x 8-bit shift registers. They are arranged this way:
 - 8 bits for step pins
 - 8 bits for direction pins
 - 8 bits for Misc, inputs and outputs, following this structure (although it might change still a bit):
-  #define CONTROL_RESET_BIT         0
-  #define CONTROL_FEED_HOLD_BIT     1
-  #define CONTROL_CYCLE_START_BIT   2
-  #define CONTROL_SAFETY_DOOR_BIT   3
-  #define PROBE_BIT                 4
-  #define COOLANT_FLOOD_BIT         5
-  #define COOLANT_MIST_BIT          6
+  
+  #define CONTROL_RESET_BIT         0  
+  #define CONTROL_FEED_HOLD_BIT     1  
+  #define CONTROL_CYCLE_START_BIT   2  
+  #define CONTROL_SAFETY_DOOR_BIT   3  
+  #define PROBE_BIT                 4  
+  #define COOLANT_FLOOD_BIT         5  
+  #define COOLANT_MIST_BIT          6    
   #define STEPPERS_DISABLE_BIT      7
 
 - 8 bits for limits. All inputs
