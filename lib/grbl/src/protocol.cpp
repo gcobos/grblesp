@@ -275,7 +275,7 @@ void protocol_exec_rt_system()
           }
         }
         // If IDLE, Grbl is not in motion. Simply indicate suspend state and hold is complete.
-        if (sys.state == STATE_IDLE) { Serial.println("Suspend0"); sys.suspend = SUSPEND_HOLD_COMPLETE; }
+        if (sys.state == STATE_IDLE) { sys.suspend = SUSPEND_HOLD_COMPLETE; }
 
         // Execute and flag a motion cancel with deceleration and return to idle. Used primarily by probing cycle
         // to halt and cancel the remainder of the motion.
@@ -358,12 +358,12 @@ void protocol_exec_rt_system()
             // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.
             sys.step_control = STEP_CONTROL_NORMAL_OP; // Restore step control to normal operation
             if (plan_get_current_block() && bit_isfalse(sys.suspend,SUSPEND_MOTION_CANCEL)) {
-              Serial.println("Suspend1"); sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
               sys.state = STATE_CYCLE;
               st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
               st_wake_up();
             } else { // Otherwise, do nothing. Set and resume IDLE state.
-              Serial.println("Suspend2"); sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
               sys.state = STATE_IDLE;
             }
           }
@@ -372,7 +372,6 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag(EXEC_CYCLE_START);
     }
     if (rt_exec & EXEC_CYCLE_STOP) {
-      Serial.println("Pulsado stop?");
       // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
       // realtime command execution in the main program, ensuring that the planner re-plans safely.
       // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
@@ -399,7 +398,7 @@ void protocol_exec_rt_system()
           sys.suspend |= SUSPEND_HOLD_COMPLETE;
           sys.state = STATE_SAFETY_DOOR;
         } else {
-          Serial.println("Suspend3"); sys.suspend = SUSPEND_DISABLE;
+          Serial.printf("Suspend3 %d %d %d\n",(sys.state & (STATE_HOLD|STATE_SAFETY_DOOR|STATE_SLEEP)), !(sys.soft_limit), !(sys.suspend & SUSPEND_JOG_CANCEL)); sys.suspend = SUSPEND_DISABLE;
           sys.state = STATE_IDLE;
         }
       }

@@ -103,7 +103,6 @@ void Telnet_Server::handleNewClient(void* arg, AsyncClient* client)
 
   if (i >= MAX_TELNET_CLIENTS) {
     //no free/disconnected spot so reject
-    //Serial.printf("Para el nuevo cliente, no hay huecos para %d", i);
     client->stop();
   }
 }
