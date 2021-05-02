@@ -21,7 +21,7 @@ The board should use 4 x 8-bit shift registers. They are arranged this way:
 - 8 bits for step pins
 - 8 bits for direction pins
 - 8 bits for Misc, inputs and outputs, following this structure (although it might change still a bit):
-  
+
   #define CONTROL_RESET_BIT         0  
   #define CONTROL_FEED_HOLD_BIT     1  
   #define CONTROL_CYCLE_START_BIT   2  
@@ -34,6 +34,8 @@ The board should use 4 x 8-bit shift registers. They are arranged this way:
 - 8 bits for limits. All inputs
 
 Probe, spindle, and probably other features, are not yet supported
+
+Connection by raw socket is supported directly by pyserial, using "socket://[IP_OF_ESP_DEVICE]:23". Tested with bCNC
 
 ![Connection diagram](https://github.com/gcobos/grblesp/blob/master/schemas/spi-connection_schem.png)
 
