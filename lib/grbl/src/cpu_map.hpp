@@ -73,9 +73,9 @@ decltype(regs) regs_tmp;
   #define DIRECTION_MASK       ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)|(1<<A_DIRECTION_BIT)|(1<<B_DIRECTION_BIT)|(1<<C_DIRECTION_BIT)|(1<<D_DIRECTION_BIT)|(1<<E_DIRECTION_BIT)) // All direction bits
 
   // Define stepper driver enable/disable output pin.
-  //#define STEPPERS_DISABLE_PORT   regs.MISC_PORT_OFFSET
-  //#define STEPPERS_DISABLE_BIT    0
-  //#define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
+  #define STEPPERS_DISABLE_PORT   regs.MISC_PORT_OFFSET
+  #define STEPPERS_DISABLE_BIT    7
+  #define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
 
   // Define homing/hard limit switch input pins and limit interrupt vectors.
   // NOTE: All limit bit pins must be on the same port, but not on a port with other input pins (CONTROL).
@@ -91,6 +91,7 @@ decltype(regs) regs_tmp;
   #define E_LIMIT_BIT	    7
   #define LIMIT_MASK      ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
 
+/*
   // Define spindle enable and spindle direction output pins.
   #define SPINDLE_ENABLE_PORT  regs.MISC_PORT_OFFSET
   // Z Limit pin and spindle PWM/enable pin swapped to access hardware PWM on Pin 11.
@@ -107,6 +108,7 @@ decltype(regs) regs_tmp;
   #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
     #define SPINDLE_DIRECTION_BIT   7
   #endif
+*/
 
   // Define flood and mist coolant enable output pins.
   #define COOLANT_FLOOD_PORT  regs.MISC_PORT_OFFSET

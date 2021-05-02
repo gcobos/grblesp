@@ -53,23 +53,32 @@ void serial_poll_rx()
 {
   uint8_t data = 0;
   uint8_t next_head;
-  uint8_t client;  // who sent the data
+  uint8_t client = CLIENT_SERIAL;  // who sent the data
   uint8_t client_idx = 0;  // index of data buffer
 
   while (Serial.available()
-  #ifdef ENABLE_SERIAL2SOCKET
+  #if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
     || Serial2Socket.available()
+  #endif
+  #if (defined ENABLE_WIFI) && (defined ENABLE_TELNET)
+    || telnetServer.available()
   #endif
     ) {
     if (Serial.available()) {
       client = CLIENT_SERIAL;
       data = Serial.read();
     }
-    #ifdef ENABLE_SERIAL2SOCKET
-      else if (Serial2Socket.available()) {
-        client = CLIENT_WEBSOCKET;
-        data = Serial2Socket.read();
-      }
+    #if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
+    else if (Serial2Socket.available()) {
+      client = CLIENT_WEBSOCKET;
+      data = Serial2Socket.read();
+    }
+    #endif
+    #if (defined ENABLE_WIFI) && (defined ENABLE_TELNET)
+    else if (telnetServer.available()) {
+      client = CLIENT_TELNET;
+      data = telnetServer.read();
+    }
     #endif
 
     client_idx = client - 1;  // for zero based array
@@ -78,7 +87,7 @@ void serial_poll_rx()
     // not passed into the main buffer, but these set system state flag bits for realtime execution.
     switch (data) {
     case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
-    case CMD_STATUS_REPORT: system_set_exec_state_flag(EXEC_STATUS_REPORT); break; // Set as true
+    case CMD_STATUS_REPORT: report_realtime_status(client); break;
     case CMD_CYCLE_START:   system_set_exec_state_flag(EXEC_CYCLE_START); break; // Set as true
     case CMD_FEED_HOLD:     system_set_exec_state_flag(EXEC_FEED_HOLD); break; // Set as true
     default :
@@ -91,7 +100,7 @@ void serial_poll_rx()
             }
             break;
           #ifdef DEBUG
-            case CMD_DEBUG_REPORT: {uint8_t sreg = SREG; cli(); bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); SREG = sreg;} break;
+            case CMD_DEBUG_REPORT: bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); break;
           #endif
           case CMD_FEED_OVR_RESET: system_set_exec_motion_override_flag(EXEC_FEED_OVR_RESET); break;
           case CMD_FEED_OVR_COARSE_PLUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_COARSE_PLUS); break;
@@ -126,10 +135,13 @@ void serial_poll_rx()
         // exit mutex
       }
     }
-#if defined(ENABLE_SERIAL2SOCKET)
-    Serial2Socket.handle_flush();
-#endif
   }
+#ifdef ENABLE_WIFI
+  wifi_handle();
+#endif
+#if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
+  Serial2Socket.handle_flush();
+#endif
 }
 
 void serial_reset_read_buffer(uint8_t client)

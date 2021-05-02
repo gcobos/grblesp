@@ -86,25 +86,25 @@ void protocol_main_loop()
 
           line[char_counter] = 0; // Set string termination character.
           #ifdef REPORT_ECHO_LINE_RECEIVED
-            report_echo_line_received(line);
+            report_echo_line_received(line, client);
           #endif
 
           // Direct and execute one line of formatted input, and report status of execution.
           if (line_flags & LINE_FLAG_OVERFLOW) {
             // Report line overflow error.
-            report_status_message(STATUS_OVERFLOW);
+            report_status_message(STATUS_OVERFLOW, client);
           } else if (line[0] == 0) {
             // Empty or comment line. For syncing purposes.
-            report_status_message(STATUS_OK);
+            report_status_message(STATUS_OK, client);
           } else if (line[0] == '$') {
             // Grbl '$' system command
-            report_status_message(system_execute_line(line));
+            report_status_message(system_execute_line(line, client), client);
           } else if (sys.state & (STATE_ALARM | STATE_JOG)) {
             // Everything else is gcode. Block if in alarm or jog mode.
-            report_status_message(STATUS_SYSTEM_GC_LOCK);
+            report_status_message(STATUS_SYSTEM_GC_LOCK, client);
           } else {
             // Parse and execute g-code block.
-            report_status_message(gc_execute_line(line));
+            report_status_message(gc_execute_line(line, client), client);
           }
 
           // Reset tracking data for next line.
@@ -254,7 +254,7 @@ void protocol_exec_rt_system()
 
     // Execute and serial print status
     if (rt_exec & EXEC_STATUS_REPORT) {
-      report_realtime_status();
+      report_realtime_status(CLIENT_ALL);
       system_clear_exec_state_flag(EXEC_STATUS_REPORT);
     }
 
@@ -340,7 +340,7 @@ void protocol_exec_rt_system()
         // Resume door state when parking motion has retracted and door has been closed.
         if ((sys.state == STATE_SAFETY_DOOR) && !(sys.suspend & SUSPEND_SAFETY_DOOR_AJAR)) {
           if (sys.suspend & SUSPEND_RESTORE_COMPLETE) {
-            sys.state = STATE_IDLE; // Set to IDLE to immediately resume the cycle.
+            sys.state = STATE_IDLE;  // Set to IDLE to immediately resume the cycle.
           } else if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
             // Flag to re-energize powered components and restore original position, if disabled by SAFETY_DOOR.
             // NOTE: For a safety door to resume, the switch must be closed, as indicated by HOLD state, and
@@ -398,7 +398,7 @@ void protocol_exec_rt_system()
           sys.suspend |= SUSPEND_HOLD_COMPLETE;
           sys.state = STATE_SAFETY_DOOR;
         } else {
-          sys.suspend = SUSPEND_DISABLE;
+          Serial.printf("Suspend3 %d %d %d\n",(sys.state & (STATE_HOLD|STATE_SAFETY_DOOR|STATE_SLEEP)), !(sys.soft_limit), !(sys.suspend & SUSPEND_JOG_CANCEL)); sys.suspend = SUSPEND_DISABLE;
           sys.state = STATE_IDLE;
         }
       }
@@ -632,9 +632,9 @@ static void protocol_exec_rt_suspend()
             spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
             coolant_set_state(COOLANT_DISABLE); // De-energize
             st_go_idle(); // Disable steppers
-            while (!(sys.abort)) { 
-              delay(0); 
-              protocol_exec_rt_system(); 
+            while (!(sys.abort)) {
+              delay(0);
+              protocol_exec_rt_system();
               } // Do nothing until reset.
             return; // Abort received. Return to re-initialize.
           }

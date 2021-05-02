@@ -26,7 +26,7 @@
 #include <Print.h>
 #define TXBUFFERSIZE 1200
 #define RXBUFFERSIZE 128
-#define FLUSHTIMEOUT 500
+#define FLUSHTIMEOUT 300
 class Serial_2_Socket: public Print{
   public:
   Serial_2_Socket();

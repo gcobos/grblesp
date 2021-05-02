@@ -325,16 +325,14 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
   return(STATUS_OK);
 }
 
-
-// Initialize the config subsystem
-void settings_init() {
+void settings_init()
+{
   if(!read_global_settings()) {
-    report_status_message(STATUS_SETTING_READ_FAIL);
+    report_status_message(STATUS_SETTING_READ_FAIL, CLIENT_SERIAL);
     settings_restore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data.
-    report_grbl_settings();
+    report_grbl_settings(CLIENT_SERIAL); // only the serial could be working at this point
   }
 }
-
 
 // Returns step pin mask according to Grbl internal axis indexing.
 uint8_t get_step_pin_mask(uint8_t axis_idx)
