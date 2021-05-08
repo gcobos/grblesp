@@ -27,6 +27,7 @@ class Telnet_Server {
     void clearClients();
     static void handleNewClient(void* arg, AsyncClient *client);
     static void handleData(void* arg, AsyncClient* client, void *data, size_t len);
+    static void handleDisconnect(void* arg, AsyncClient* client);
     static uint16_t port(){return _port;}
     private:
     static bool _setupdone;

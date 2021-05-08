@@ -74,11 +74,20 @@ static void handleError(void* arg, AsyncClient* client, int8_t error) {
 }
 
 void Telnet_Server::handleData(void* arg, AsyncClient* client, void *data, size_t len) {
+  //printf("Received '%.*s'\n", len, (uint8_t*)data);
   telnetServer.push((uint8_t *)data, len);
 }
 
-static void handleDisconnect(void* arg, AsyncClient* client) {
+void Telnet_Server::handleDisconnect(void* arg, AsyncClient* client) {
 	Serial.printf("\n client %s disconnected \n", client->remoteIP().toString().c_str());
+  uint8_t i = 0;
+  for (i = 0; i < MAX_TELNET_CLIENTS; i++) {
+    //find free/disconnected spot
+    if (_telnetClients[i] != NULL && _telnetClients[i] == client) {
+      _telnetClients[i] = NULL;
+      break;
+    }
+  }
 }
 
 static void handleTimeOut(void* arg, AsyncClient* client, uint32_t time) {
@@ -87,6 +96,7 @@ static void handleTimeOut(void* arg, AsyncClient* client, uint32_t time) {
 
 void Telnet_Server::handleNewClient(void* arg, AsyncClient* client)
 {
+  //Serial.printf("\n client connected ip: %s \n", client->remoteIP().toString().c_str());
   client->onData(&handleData, NULL);
   client->onError(&handleError, NULL);
   client->onDisconnect(&handleDisconnect, NULL);
@@ -121,7 +131,7 @@ int Telnet_Server::get_rx_buffer_available(){
     return TELNET_RXBUFFERSIZE - _RXbufferSize;
 }
 
-bool Telnet_Server::push (uint8_t data){
+bool Telnet_Server::push(uint8_t data){
     if ((1 + _RXbufferSize) <= TELNET_RXBUFFERSIZE){
         int current = _RXbufferpos + _RXbufferSize;
         if (current > TELNET_RXBUFFERSIZE) current = current - TELNET_RXBUFFERSIZE;
@@ -133,18 +143,16 @@ bool Telnet_Server::push (uint8_t data){
     return false;
 }
 
-bool Telnet_Server::push (const uint8_t * data, int data_size){
+bool Telnet_Server::push(const uint8_t * data, int data_size){
     if ((data_size + _RXbufferSize) <= TELNET_RXBUFFERSIZE) {
         int data_processed = 0;
         int current = _RXbufferpos + _RXbufferSize;
         if (current > TELNET_RXBUFFERSIZE) current = current - TELNET_RXBUFFERSIZE;
         for (int i = 0; i < data_size; i++){
           if (current > (TELNET_RXBUFFERSIZE-1)) current = 0;
-          if (char(data[i]) != '\r' && data[i] != 0) {
-            _RXbuffer[current] = data[i];
-            current++;
-            data_processed++;
-          }
+          _RXbuffer[current] = data[i];
+          current++;
+          data_processed++;
         }
         _RXbufferSize+=data_processed;
         return true;

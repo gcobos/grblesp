@@ -398,7 +398,7 @@ void protocol_exec_rt_system()
           sys.suspend |= SUSPEND_HOLD_COMPLETE;
           sys.state = STATE_SAFETY_DOOR;
         } else {
-          Serial.printf("Suspend3 %d %d %d\n",(sys.state & (STATE_HOLD|STATE_SAFETY_DOOR|STATE_SLEEP)), !(sys.soft_limit), !(sys.suspend & SUSPEND_JOG_CANCEL)); sys.suspend = SUSPEND_DISABLE;
+          sys.suspend = SUSPEND_DISABLE;
           sys.state = STATE_IDLE;
         }
       }

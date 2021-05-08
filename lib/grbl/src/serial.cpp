@@ -80,7 +80,6 @@ void serial_poll_rx()
       data = telnetServer.read();
     }
     #endif
-
     client_idx = client - 1;  // for zero based array
 
     // Pick off realtime command characters directly from the serial stream. These characters are

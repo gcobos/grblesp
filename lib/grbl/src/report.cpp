@@ -282,12 +282,13 @@ void report_ngc_parameters(uint8_t client)
 {
   float coord_data[N_AXIS];
   uint8_t coord_select;
-  char temp[60];
-  char ngc_rpt[500];
+  char temp[100];
+  char ngc_rpt[1000];
 
   ngc_rpt[0] = '\0';
-
   for (coord_select = 0; coord_select <= SETTING_INDEX_NCOORD; coord_select++) {
+    ESP.wdtFeed();
+    delay(0);
     if (!(settings_read_coord_data(coord_select,coord_data))) {
       report_status_message(STATUS_SETTING_READ_FAIL, client);
       return;
@@ -319,9 +320,7 @@ void report_ngc_parameters(uint8_t client)
     sprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset);
   }
   strcat(ngc_rpt, temp);
-
   grbl_send(client, ngc_rpt);
-
   report_probe_parameters(client);
 }
 
