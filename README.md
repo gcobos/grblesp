@@ -1,9 +1,21 @@
 # GRBLESP
 
-Implements the latest version of GRBL using ESP8266 only. To overcome the problem of the lack of pins,
-it uses SPI to drive 4 shift registers of 8 bits each.
+Implements the latest version of GRBL using ESP8266 only, being able to connect by serial port, raw socket or websocket. 
+To overcome the problem of the lack of pins, it uses SPI to drive 4 shift registers of 8 bits each. The aim of having
+32 pins is to be able to handle up to 8 axis.
 
-The aim of having 32 pins is to be able to handle up to 8 axis.
+Interfaces
+----------
+
+For the raw socket connection, you can use pyserial, which supports it through "socket" protocol.
+**socket://[IP_OF_ESP_DEVICE]:23**. It can be tested easily with [bCNC](https://github.com/vlachoudis/bCNC)
+
+
+For the websocket connection, the url is: **ws://[IP_OF_ESP_DEVICE]:80/ws**
+
+
+Wiring
+------
 
 - GPIO0 controls inputs as RESET, FEED_HOLD, START_CYCLE and SAFETY_DOOR
 
@@ -34,8 +46,6 @@ The board should use 4 x 8-bit shift registers. They are arranged this way:
 - 8 bits for limits. All inputs
 
 Probe, spindle, and probably other features, are not yet supported
-
-Connection by raw socket is supported directly by pyserial, using "socket://[IP_OF_ESP_DEVICE]:23". Tested with bCNC
 
 ![Connection diagram](https://github.com/gcobos/grblesp/blob/master/schemas/spi-connection_schem.png)
 
