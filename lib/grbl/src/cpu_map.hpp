@@ -165,7 +165,7 @@ decltype(regs) regs_tmp;
 
   #define LIMIT_INPUT_GPIO_PIN      D4    // GPIO_2 = D4
 
-  #define F_STEPPER_TIMER 40000000  // frequency of step pulse timer (SPI)
+  #define F_STEPPER_TIMER 80000000/4 // frequency in Hz of step pulse timer (SPI)
 
 #endif
 

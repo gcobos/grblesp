@@ -362,7 +362,7 @@ void TIMER1_COMPA_vect(void)
 
       // Initialize step segment timing per step and load number of steps to execute.
       //OCR1A = st.exec_segment->cycles_per_tick;
-	    timer1_write(st.exec_segment->cycles_per_tick<<2);
+	    timer1_write(st.exec_segment->cycles_per_tick<<4);
 
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
@@ -1105,7 +1105,6 @@ void st_prep_buffer()
         plan_discard_current_block();
       }
     }
-
   }
 }
 
