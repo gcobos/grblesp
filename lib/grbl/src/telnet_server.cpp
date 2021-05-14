@@ -63,7 +63,7 @@ size_t Telnet_Server::write(const uint8_t *buffer, size_t size){
     for(uint8_t i = 0; i < MAX_TELNET_CLIENTS; i++){
         if (_telnetClients[i] != NULL && _telnetClients[i]->connected()){
           wsize = _telnetClients[i]->write((const char*)buffer, size);
-          delay(0);
+          ///delay(0);
         }
     }
     return wsize;

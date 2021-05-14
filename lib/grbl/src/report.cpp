@@ -287,8 +287,8 @@ void report_ngc_parameters(uint8_t client)
 
   ngc_rpt[0] = '\0';
   for (coord_select = 0; coord_select <= SETTING_INDEX_NCOORD; coord_select++) {
-    ESP.wdtFeed();
-    delay(0);
+    ///ESP.wdtFeed();
+    ///delay(0);
     if (!(settings_read_coord_data(coord_select,coord_data))) {
       report_status_message(STATUS_SETTING_READ_FAIL, client);
       return;
@@ -583,7 +583,9 @@ void report_realtime_status(uint8_t client)
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_BUFFER_STATE)) {
     int bufsize;
     if (client == CLIENT_TELNET) {
+#ifdef ENABLE_TELNET
       bufsize = telnetServer.get_rx_buffer_available();
+#endif
     } else {
       bufsize = serial_get_rx_buffer_available(client);
     }

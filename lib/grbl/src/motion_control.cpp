@@ -58,7 +58,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
   // If the buffer is full: good! That means we are well ahead of the robot.
   // Remain in this loop until there is room in the buffer.
   do {
-    ESP.wdtFeed();
+    ///ESP.wdtFeed();
     delay(0);
     protocol_execute_realtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
@@ -288,7 +288,7 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
   system_set_exec_state_flag(EXEC_CYCLE_START);
   do {
-    ESP.wdtFeed();
+    ///ESP.wdtFeed();
     delay(0);
     protocol_execute_realtime();
     if (sys.abort) { return(GC_PROBE_ABORT); } // Check for system abort
@@ -338,7 +338,7 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
       st_prep_buffer();
       st_wake_up();
       do {
-        ESP.wdt_reset();
+        ///ESP.wdt_reset();
         delay(0);
         protocol_exec_rt_system();
         if (sys.abort) { return; }

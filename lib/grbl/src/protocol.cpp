@@ -78,7 +78,7 @@ void protocol_main_loop()
     for (client = 1; client <= CLIENT_COUNT; client++)
     {
       while((c = serial_read(client)) != SERIAL_NO_DATA) {
-        ESP.wdtFeed();
+        ///ESP.wdtFeed();
         delay(0);
         if ((c == '\n') || (c == '\r')) { // End of line reached
           protocol_execute_realtime(); // Runtime command check point.
@@ -174,7 +174,7 @@ void protocol_buffer_synchronize()
   // If system is queued, ensure cycle resumes if the auto start flag is present.
   protocol_auto_cycle_start();
   do {
-    ESP.wdtFeed();
+    ///ESP.wdtFeed();
     delay(0);
     protocol_execute_realtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
@@ -231,7 +231,7 @@ void protocol_exec_rt_system()
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
       system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {
-        ESP.wdtFeed();
+        ///ESP.wdtFeed();
         delay(0);
         // Block everything, except reset and status reports, until user issues reset or power
         // cycles. Hard limits typically occur while unattended or not paying attention. Gives

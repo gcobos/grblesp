@@ -47,9 +47,9 @@
 #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
 	#define MAX_AMASS_LEVEL 3
 	// AMASS_LEVEL0: Normal operation. No AMASS. No upper cutoff frequency. Starts at LEVEL1 cutoff frequency.
-	#define AMASS_LEVEL1 (F_CPU/8000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz)
-	#define AMASS_LEVEL2 (F_CPU/4000) // Over-drives ISR (x4)
-	#define AMASS_LEVEL3 (F_CPU/2000) // Over-drives ISR (x8)
+	#define AMASS_LEVEL1 (F_CPU/40000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz)
+	#define AMASS_LEVEL2 (F_CPU/20000) // Over-drives ISR (x4)
+	#define AMASS_LEVEL3 (F_CPU/10000) // Over-drives ISR (x8)
 
   #if MAX_AMASS_LEVEL <= 0
     error "AMASS must have 1 or more levels to operate correctly."
@@ -362,7 +362,7 @@ void TIMER1_COMPA_vect(void)
 
       // Initialize step segment timing per step and load number of steps to execute.
       //OCR1A = st.exec_segment->cycles_per_tick;
-	    timer1_write(st.exec_segment->cycles_per_tick<<4);
+	    timer1_write(st.exec_segment->cycles_per_tick);
 
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
@@ -532,7 +532,7 @@ void TIMER1_COMPA_vect(void)
 void TIMER0_OVF_vect(void)
 {
   // timer0 cannot be disabled. It needs to have some value in the future or wdt reset will happen
-  timer0_write(0);
+  timer0_write(ESP.getCycleCount()-1);
 
 	// Reset stepping pins (leave the direction pins)
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK);
@@ -608,6 +608,7 @@ void stepper_init()
 	timer1_attachInterrupt(TIMER1_COMPA_vect);
 	timer1_write(1);
 
+	//Serial.println(ESP.getCycleCount());
   // Configure Timer 1: Stepper Driver Interrupt
   /*TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
   TCCR1B |=  (1<<WGM12);
@@ -705,7 +706,7 @@ void st_prep_buffer()
   if (bit_istrue(sys.step_control,STEP_CONTROL_END_MOTION)) { return; }
 
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-	delay(0);
+	//delay(0);
 
     // Determine if we need to load a new planner block or if the block needs to be recomputed.
     if (pl_block == NULL) {
@@ -902,8 +903,8 @@ void st_prep_buffer()
     if (minimum_mm < 0.0) { minimum_mm = 0.0; }
 
     do {
-      ESP.wdtFeed();
-      delay(0);
+      //ESP.wdtFeed();
+      //delay(0);
       switch (prep.ramp_type) {
         case RAMP_DECEL_OVERRIDE:
           speed_var = pl_block->acceleration*time_var;
