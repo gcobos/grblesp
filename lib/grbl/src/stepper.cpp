@@ -263,6 +263,7 @@ void st_go_idle()
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  SPI.write32(regs.data);
 }
 
 
@@ -334,14 +335,14 @@ void TIMER1_COMPA_vect(void)
     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
   #endif
 
+  // Write regs
+  SPI.write32(regs.data);
+
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   //TCNT0 = st.step_pulse_time; // Reload Timer0 counter
   //TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler
   timer0_write(ESP.getCycleCount() + st.step_pulse_time);
-
-  // Write regs
-  SPI.write32(regs.data);
 
   busy = true;
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time.
@@ -531,13 +532,13 @@ void TIMER1_COMPA_vect(void)
 //ISR(TIMER0_OVF_vect)
 void TIMER0_OVF_vect(void)
 {
-  // timer0 cannot be disabled. It needs to have some value in the future or wdt reset will happen
-  timer0_write(ESP.getCycleCount()-1);
-
 	// Reset stepping pins (leave the direction pins)
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK);
   //TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed.
   SPI.write32(regs.data);
+
+  // timer0 cannot be disabled. It needs to have some value in the future or wdt reset will happen
+  timer0_write(0);
 }
 
 #ifdef STEP_PULSE_DELAY
@@ -588,6 +589,7 @@ void st_reset()
   // Initialize step and direction port pins.
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
+  SPI.write32(regs.data);
 }
 
 
