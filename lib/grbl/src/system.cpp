@@ -68,8 +68,8 @@ static uint8_t control_input_pivot;
 ICACHE_RAM_ATTR void pin_control_vect() {
   uint8_t control_state = 0;
 
-  if (!control_input_pivot && GPIP(CONTROL_INPUT_GPIO_PIN)) {
-
+  if (!control_input_pivot && !CONTROL_PORT_INPUTS) {
+    cli();
     // Go through all control input pins, setting only one bit to 0 at a time
     // and check if the physical pin is off for that combination
     for (control_input_pivot = 1; control_input_pivot; control_input_pivot <<= 1) {
@@ -82,6 +82,7 @@ ICACHE_RAM_ATTR void pin_control_vect() {
         }
       }
     }
+    sei();
     CONTROL_PORT_INPUTS = control_state;
 
     // Put all shift register inputs back to zero

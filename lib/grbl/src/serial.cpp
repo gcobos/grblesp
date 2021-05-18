@@ -46,7 +46,7 @@ void serial_init()
   Serial.begin(BAUD_RATE);
 
   Serial.setDebugOutput(false);
-  serial_poll_task.attach_ms(1, serial_poll_rx);
+  serial_poll_task.attach_ms(100, serial_poll_rx);
 }
 
 void serial_poll_rx()

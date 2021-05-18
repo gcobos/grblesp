@@ -87,8 +87,8 @@ static uint8_t limit_input_pivot;
 ICACHE_RAM_ATTR void pin_limit_vect() {
   uint8_t limit_state = 0;
 
-  if (!limit_input_pivot && GPIP(LIMIT_INPUT_GPIO_PIN)) {
-
+  if (!limit_input_pivot && !LIMIT_PORT_INPUTS) {
+    cli();
     // Go through all limit input pins, setting only one bit to 0 at a time
     // and check if the physical pin is off for that combination
     for (limit_input_pivot = 1; limit_input_pivot; limit_input_pivot <<= 1) {
@@ -101,6 +101,7 @@ ICACHE_RAM_ATTR void pin_limit_vect() {
         }
       }
     }
+    sei();
     LIMIT_PORT_INPUTS = limit_state;
 
     // Put all shift register inputs back to zero

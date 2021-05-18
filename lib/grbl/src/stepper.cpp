@@ -708,7 +708,7 @@ void st_prep_buffer()
   if (bit_istrue(sys.step_control,STEP_CONTROL_END_MOTION)) { return; }
 
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-	//delay(0);
+	  delay(0);
 
     // Determine if we need to load a new planner block or if the block needs to be recomputed.
     if (pl_block == NULL) {
