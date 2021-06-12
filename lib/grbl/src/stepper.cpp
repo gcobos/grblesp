@@ -249,8 +249,15 @@ void st_go_idle()
   /*TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt
   TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling.
   */
-	timer1_disable();
-	busy = false;
+  timer1_disable();
+#ifdef USE_DC_MOTORS
+  STEP_PORT = step_port_invert_mask ^ DIRECTION_PORT;
+#else
+  STEP_PORT = step_port_invert_mask;
+#endif
+  SPI.write32(regs.data);
+
+  busy = false;
 
   // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
   bool pin_state = false; // Keep enabled.
@@ -258,7 +265,7 @@ void st_go_idle()
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
-		pin_state = true; // Override. Disable steppers.
+    pin_state = true; // Override. Disable steppers.
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
@@ -323,17 +330,14 @@ void TIMER1_COMPA_vect(void)
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
 
   // Set the direction pins a couple of nanoseconds before we step the steppers
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
-
-  // Set direction bits
-  //SPI.write32(regs.data);
+  DIRECTION_PORT = st.dir_outbits;
 
   // Then pulse the stepping pins
-  #ifdef STEP_PULSE_DELAY
-    st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
-  #else  // Normal operation
-    STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
-  #endif
+#ifdef USE_DC_MOTORS
+  STEP_PORT = st.step_outbits ^ st.dir_outbits;
+#else
+  STEP_PORT = st.step_outbits;
+#endif
 
   // Write regs
   SPI.write32(regs.data);
@@ -532,13 +536,17 @@ void TIMER1_COMPA_vect(void)
 //ISR(TIMER0_OVF_vect)
 void TIMER0_OVF_vect(void)
 {
-	// Reset stepping pins (leave the direction pins)
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK);
+  // Reset stepping pins (leave the direction pins)
+#ifdef USE_DC_MOTORS
+  STEP_PORT = step_port_invert_mask ^ DIRECTION_PORT;
+#else
+  STEP_PORT = step_port_invert_mask
+#endif
   //TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed.
   SPI.write32(regs.data);
 
   // timer0 cannot be disabled. It needs to have some value in the future or wdt reset will happen
-  timer0_write(0);
+  timer0_write(ESP.getCycleCount()-1);
 }
 
 #ifdef STEP_PULSE_DELAY
@@ -587,8 +595,12 @@ void st_reset()
   st.dir_outbits = dir_port_invert_mask; // Initialize direction bits to default.
 
   // Initialize step and direction port pins.
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
+  DIRECTION_PORT = dir_port_invert_mask;
+#ifdef USE_DC_MOTORS
+  STEP_PORT = step_port_invert_mask ^ dir_port_invert_mask;
+#else
+  STEP_PORT = step_port_invert_mask;
+#endif
   SPI.write32(regs.data);
 }
 
@@ -601,14 +613,14 @@ void stepper_init()
   //STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   //DIRECTION_DDR |= DIRECTION_MASK;
 
-	timer0_isr_init();
-	timer0_attachInterrupt(TIMER0_OVF_vect);
-	timer0_write(ESP.getCycleCount()-1);
+  timer0_isr_init();
+  timer0_attachInterrupt(TIMER0_OVF_vect);
+  timer0_write(ESP.getCycleCount()-1);
 
-	timer1_isr_init();
-	timer1_disable();
-	timer1_attachInterrupt(TIMER1_COMPA_vect);
-	timer1_write(1);
+  timer1_isr_init();
+  timer1_disable();
+  timer1_attachInterrupt(TIMER1_COMPA_vect);
+  timer1_write(1);
 
 	//Serial.println(ESP.getCycleCount());
   // Configure Timer 1: Stepper Driver Interrupt
@@ -708,7 +720,7 @@ void st_prep_buffer()
   if (bit_istrue(sys.step_control,STEP_CONTROL_END_MOTION)) { return; }
 
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-	  delay(0);
+	  //delay(0);
 
     // Determine if we need to load a new planner block or if the block needs to be recomputed.
     if (pl_block == NULL) {

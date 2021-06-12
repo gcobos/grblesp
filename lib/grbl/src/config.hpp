@@ -428,6 +428,10 @@
 // values for certain setups have ranged from 5 to 20us.
 // #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
 
+// Invert STEP pulses when DIRECTION bit is set. This allows to use gcode to drive DC motors in
+// a PWM (Pulse Width Modulation) fashion
+// #define USE_DC_MOTORS 
+
 // The number of linear motions in the planner buffer to be planned at any give time. The vast
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra
 // available RAM, like when re-compiling for a Mega2560. Or decrease if the Arduino begins to
