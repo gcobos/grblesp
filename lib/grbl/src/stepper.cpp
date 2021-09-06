@@ -540,7 +540,7 @@ void TIMER0_OVF_vect(void)
 #ifdef USE_DC_MOTORS
   STEP_PORT = step_port_invert_mask ^ DIRECTION_PORT;
 #else
-  STEP_PORT = step_port_invert_mask
+  STEP_PORT = step_port_invert_mask;
 #endif
   //TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed.
   SPI.write32(regs.data);
