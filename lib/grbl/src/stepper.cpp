@@ -234,10 +234,9 @@ void st_wake_up()
     // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
     st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
   #endif
-
   // Enable Stepper Driver Interrupt
   //TIMSK1 |= (1<<OCIE1A);
-	T1C = (1 << TCTE) | ((TIM_EDGE & 1) << TCIT) | ((TIM_LOOP & 1) << TCAR);
+	T1C = (1 << TCTE) | ((TIM_EDGE & 1) << TCIT) | ((TIM_LOOP & 1) << TCAR) | (1<<TCPD);
 	T1I = 0;
 }
 
@@ -362,7 +361,7 @@ void TIMER1_COMPA_vect(void)
       #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
         // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
 				// TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
-				T1C = (T1C & ~(0x03<<TCPD)) | (st.exec_segment->prescaler<<TCPD);
+				T1C |= (st.exec_segment->prescaler<<TCPD);
       #endif
 
       // Initialize step segment timing per step and load number of steps to execute.
@@ -1074,15 +1073,15 @@ void st_prep_buffer()
     #else
       // Compute step timing and timer prescalar for normal step generation.
       if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
-        prep_segment->prescaler = 1; // prescaler: 0
+        prep_segment->prescaler = 0; // prescaler: 0
         prep_segment->cycles_per_tick = cycles;
       } else if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
-        prep_segment->prescaler = 2; // prescaler: 8
-        prep_segment->cycles_per_tick = cycles >> 3;
+        prep_segment->prescaler = 1; // prescaler: 16
+        prep_segment->cycles_per_tick = cycles >> 4;
       } else {
-        prep_segment->prescaler = 3; // prescaler: 64
+        prep_segment->prescaler = 2; // prescaler: 256
         if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
-          prep_segment->cycles_per_tick =  cycles >> 6;
+          prep_segment->cycles_per_tick =  cycles >> 8;
         } else { // Just set the slowest speed possible. (Around 4 step/sec.)
           prep_segment->cycles_per_tick = 0xffff;
         }
