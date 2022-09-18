@@ -178,7 +178,6 @@ void limits_go_home(uint8_t cycle_mask)
 
   uint8_t limit_state, axislock, n_active_axis;
   do {
-    ///ESP.wdtFeed();
     ///delay(0);
     system_convert_array_steps_to_mpos(target,sys_position);
 
@@ -227,7 +226,6 @@ void limits_go_home(uint8_t cycle_mask)
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
     st_wake_up(); // Initiate motion
     do {
-      ///ESP.wdtFeed();
       ///delay(0);
       if (approach) {
         // Check limit state. Lock out cycle axes when they change.
@@ -345,7 +343,6 @@ void limits_soft_check(float *target)
     if (sys.state == STATE_CYCLE) {
       system_set_exec_state_flag(EXEC_FEED_HOLD);
       do {
-        ///ESP.wdtFeed();
         ///delay(0);
         protocol_execute_realtime();
         if (sys.abort) { return; }

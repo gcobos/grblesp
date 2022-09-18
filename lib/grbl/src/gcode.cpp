@@ -240,6 +240,7 @@ uint8_t gc_execute_line(char *line, uint8_t client)
         break;
 
       case 'M':
+
         // Determine 'M' command and its modal group
         if (mantissa > 0) { FAIL(STATUS_GCODE_COMMAND_VALUE_NOT_INTEGER); } // [No Mxx.x commands]
         switch(int_value) {
@@ -252,8 +253,8 @@ uint8_t gc_execute_line(char *line, uint8_t client)
             }
             break;
           case 3: case 4: case 5:
-            /*word_bit = MODAL_GROUP_M7;
-            switch(int_value) {
+            word_bit = MODAL_GROUP_M7;
+            /*switch(int_value) {
               case 3: gc_block.modal.spindle = SPINDLE_ENABLE_CW; break;
               case 4: gc_block.modal.spindle = SPINDLE_ENABLE_CCW; break;
               case 5: gc_block.modal.spindle = SPINDLE_DISABLE; break;

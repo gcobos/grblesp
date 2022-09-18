@@ -58,12 +58,11 @@ void mc_line(float *target, plan_line_data_t *pl_data)
   // If the buffer is full: good! That means we are well ahead of the robot.
   // Remain in this loop until there is room in the buffer.
   do {
-    ///ESP.wdtFeed();
-    delay(0);
     protocol_execute_realtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
     if ( plan_check_full_buffer() ) { protocol_auto_cycle_start(); } // Auto-cycle start when buffer is full.
     else { break; }
+    delay(0);
   } while (1);
 
   // Plan and queue motion into planner buffer
@@ -160,7 +159,6 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
     uint8_t count = 0;
 
     for (i = 1; i<segments; i++) { // Increment (segments-1).
-      delay(0);
       if (count < N_ARC_CORRECTION) {
         // Apply vector rotation matrix. ~40 usec
         r_axisi = r_axis0*sin_T + r_axis1*cos_T;
@@ -186,6 +184,7 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
 
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
       if (sys.abort) { return; }
+      delay(0);
     }
   }
   // Ensure last segment arrives at target location.
@@ -288,10 +287,9 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
   system_set_exec_state_flag(EXEC_CYCLE_START);
   do {
-    ///ESP.wdtFeed();
-    delay(0);
     protocol_execute_realtime();
     if (sys.abort) { return(GC_PROBE_ABORT); } // Check for system abort
+    delay(0);
   } while (sys.state != STATE_IDLE);
 
   // Probing cycle complete!
@@ -338,10 +336,9 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
       st_prep_buffer();
       st_wake_up();
       do {
-        ///ESP.wdt_reset();
-        delay(0);
         protocol_exec_rt_system();
         if (sys.abort) { return; }
+        delay(0);
       } while (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION);
       st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
     } else {

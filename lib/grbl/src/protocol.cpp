@@ -71,15 +71,12 @@ void protocol_main_loop()
   uint8_t char_counter = 0;
   uint8_t c;
   for (;;) {
-    delay(0);
     // Process one line of incoming serial data, as the data becomes available. Performs an
     // initial filtering by removing spaces and comments and capitalizing all letters.
     uint8_t client = CLIENT_SERIAL;
     for (client = 1; client <= CLIENT_COUNT; client++)
     {
       while((c = serial_read(client)) != SERIAL_NO_DATA) {
-        ///ESP.wdtFeed();
-        delay(0);
         if ((c == '\n') || (c == '\r')) { // End of line reached
           protocol_execute_realtime(); // Runtime command check point.
           if (sys.abort) { return; } // Bail to calling function upon system abort
@@ -151,6 +148,7 @@ void protocol_main_loop()
             }
           }
         }
+        delay(0);
       }
     }
 
@@ -161,6 +159,7 @@ void protocol_main_loop()
 
     protocol_execute_realtime();  // Runtime command check point.
     if (sys.abort) { return; } // Bail to main() program loop to reset system.
+    delay(0);
   }
 
   return; /* Never reached */
@@ -174,10 +173,9 @@ void protocol_buffer_synchronize()
   // If system is queued, ensure cycle resumes if the auto start flag is present.
   protocol_auto_cycle_start();
   do {
-    ///ESP.wdtFeed();
-    delay(0);
     protocol_execute_realtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
+    delay(0);
   } while (plan_get_current_block() || (sys.state == STATE_CYCLE));
 }
 
@@ -231,7 +229,6 @@ void protocol_exec_rt_system()
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
       system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {
-        ///ESP.wdtFeed();
         delay(0);
         // Block everything, except reset and status reports, until user issues reset or power
         // cycles. Hard limits typically occur while unattended or not paying attention. Gives
@@ -261,6 +258,7 @@ void protocol_exec_rt_system()
     // NOTE: Once hold is initiated, the system immediately enters a suspend state to block all
     // main program processes until either reset or resumed. This ensures a hold completes safely.
     if (rt_exec & (EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP)) {
+
       // State check for allowable states for hold methods.
       if (!(sys.state & (STATE_ALARM | STATE_CHECK_MODE))) {
 
@@ -340,7 +338,7 @@ void protocol_exec_rt_system()
         // Resume door state when parking motion has retracted and door has been closed.
         if ((sys.state == STATE_SAFETY_DOOR) && !(sys.suspend & SUSPEND_SAFETY_DOOR_AJAR)) {
           if (sys.suspend & SUSPEND_RESTORE_COMPLETE) {
-            sys.state = STATE_IDLE;  // Set to IDLE to immediately resume the cycle.
+            sys.state = STATE_IDLE; // Set to IDLE to immediately resume the cycle.
           } else if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
             // Flag to re-energize powered components and restore original position, if disabled by SAFETY_DOOR.
             // NOTE: For a safety door to resume, the switch must be closed, as indicated by HOLD state, and
@@ -371,6 +369,7 @@ void protocol_exec_rt_system()
       }
       system_clear_exec_state_flag(EXEC_CYCLE_START);
     }
+
     if (rt_exec & EXEC_CYCLE_STOP) {
       // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
       // realtime command execution in the main program, ensuring that the planner re-plans safely.
@@ -405,6 +404,7 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag(EXEC_CYCLE_STOP);
     }
   }
+
   // Execute overrides.
   rt_exec = sys_rt_exec_motion_override; // Copy volatile sys_rt_exec_motion_override
   if (rt_exec) {
@@ -547,16 +547,18 @@ static void protocol_exec_rt_suspend()
   #endif
 
   while (sys.suspend) {
-    delay(0);
     if (sys.abort) { return; }
 
     // Block until initial hold is complete and the machine has stopped motion.
     if (sys.suspend & SUSPEND_HOLD_COMPLETE) {
+
       // Parking manager. Handles de/re-energizing, switch state checks, and parking motions for
       // the safety door and sleep states.
       if (sys.state & (STATE_SAFETY_DOOR | STATE_SLEEP)) {
+
         // Handles retraction motions and de-energizing.
         if (bit_isfalse(sys.suspend,SUSPEND_RETRACT_COMPLETE)) {
+
           // Ensure any prior spindle stop override is disabled at start of safety door routine.
           sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED;
 
@@ -626,6 +628,8 @@ static void protocol_exec_rt_suspend()
           sys.suspend |= SUSPEND_RETRACT_COMPLETE;
 
         } else {
+
+
           if (sys.state == STATE_SLEEP) {
             report_feedback_message(MESSAGE_SLEEP_MODE);
             // Spindle and coolant should already be stopped, but do it again just to be sure.
@@ -633,8 +637,8 @@ static void protocol_exec_rt_suspend()
             coolant_set_state(COOLANT_DISABLE); // De-energize
             st_go_idle(); // Disable steppers
             while (!(sys.abort)) {
-              delay(0);
               protocol_exec_rt_system();
+              delay(0);
               } // Do nothing until reset.
             return; // Abort received. Return to re-initialize.
           }
@@ -720,6 +724,7 @@ static void protocol_exec_rt_suspend()
 
 
       } else {
+
         // Feed hold manager. Controls spindle stop override states.
         // NOTE: Hold ensured as completed by condition check at the beginning of suspend routine.
         if (sys.spindle_stop_ovr) {
@@ -760,6 +765,6 @@ static void protocol_exec_rt_suspend()
     }
 
     protocol_exec_rt_system();
-
+    delay(0);
   }
 }
