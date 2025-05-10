@@ -40,7 +40,7 @@ void system_init()
 // Returns control pin state as a uint8 bitfield. Each bit indicates the input pin state, where
 // triggered is 1 and not triggered is 0. Invert mask is applied. Bitfield organization is
 // defined by the CONTROL_PIN_INDEX in the header file.
-ICACHE_RAM_ATTR uint8_t system_control_get_state()
+IRAM_ATTR uint8_t system_control_get_state()
 {
   uint8_t control_state = 0;
   uint8_t pin = (CONTROL_PORT_INPUTS & CONTROL_MASK);
@@ -65,7 +65,7 @@ ICACHE_RAM_ATTR uint8_t system_control_get_state()
 // directly from the incoming serial data stream.
 static uint8_t control_input_pivot;
 
-ICACHE_RAM_ATTR void pin_control_vect() {
+IRAM_ATTR void pin_control_vect() {
   uint8_t control_state = 0;
 
   if (!control_input_pivot && !CONTROL_PORT_INPUTS) {

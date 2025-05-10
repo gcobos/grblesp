@@ -84,7 +84,7 @@ uint8_t limits_get_state()
 
 static uint8_t limit_input_pivot;
 
-ICACHE_RAM_ATTR void pin_limit_vect() {
+IRAM_ATTR void pin_limit_vect() {
   uint8_t limit_state = 0;
 
   if (!limit_input_pivot && !LIMIT_PORT_INPUTS) {
